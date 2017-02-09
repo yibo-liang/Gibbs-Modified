@@ -1,0 +1,47 @@
+Design target:
+
+Naive Gibbs Sampling
+
+Parallel using CUDA, Serialisable for future cluster implementation
+
+Hierarchical LDA
+
+Less memory consumption
+
+JSON input output
+CSV output input
+Serialisable(Binary) output input
+
+Use camelCase instead of underscore _, reason: shorter name for readability
+
+
+
+CUDA Parallel Gibbs Sampling data structure
+
+Job {
+	//serialisable
+	
+	Corpus: [
+		List of all documents
+	]
+	
+	int iterationNumber
+	
+	void nextIteration() // run for one iteration
+	
+	
+	Model model;
+	
+	tasks: [
+		iteration_task{
+			//A serialisable object contains a subset of corpus 
+			task
+		}
+	]
+	
+	
+	
+	
+}
+
+
