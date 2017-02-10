@@ -1,0 +1,7 @@
+﻿  job.cpp
+  job_config.cpp
+  main.cpp
+  Generating code
+  All 1509 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  PLDA.vcxproj -> F:\PhD\git\NaivePHLDA\x64\Release\PLDA.exe

@@ -14,9 +14,55 @@ Serialisable(Binary) output input
 
 Use camelCase instead of underscore _, reason: shorter name for readability
 
+Use std::vector rather than c++ raw array (safer and optimized)
+
+
+Program flow
+
+DATA => JOB => MODEL =>DATA
+
+in detail
+
+DATA => JOB => [TASKS] => FINISHED JOB => MODEL => DATA
+
+TASK CREATION
+
+JOB => Prepare task data => [TASKS] =>distribute tasks over processes=> 
+working tasks
+on each processes
+for each iteration {
+	for each task{
+		sample
+	}
+	wait until all finish and sync all processes with necessary data [nw, nd, nwsum, ndsum]
+	
+}
+
+
+Model from Job 's result
+Model may have sub models
+
+When a Model is generated from job, information of the model 
+should/can be used to create sub jobs and therefore sub models
+
+
 
 
 CUDA Parallel Gibbs Sampling data structure
+
+Model{
+	int datasetSize; //data set size , or M
+	int vocabularySize; //vocabulary size, or V
+	int topicNumber; //number of topics, or K
+	
+	double alpha, beta;
+	
+	vector<vector<int>> z; //topic assignements for words
+	
+	
+}
+
+
 
 Job {
 	//serialisable

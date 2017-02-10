@@ -1,12 +1,11 @@
 #pragma once
-#include "document.h"
-#include <string>
-#include <vector>
-#include <map>
 
-using std::vector;
-using std::string;
-using std::map;
+#ifndef CORPUS
+#define CORPUS
+
+#include "shared_header.h"
+#include "document.h"
+
 class Corpus
 {
 public:
@@ -15,6 +14,11 @@ public:
 	map<string, int> word2IndexMap;
 	map<int, string> index2WordMap;
 
+	int totalWordCount = 0;
+
+	void fromTextFile(string filename, int textIdxStart, map<int, string> otherAttrsIdx);
+	void fromJSONFile(string filename, string textKey, vector<string> otherAttrs);
+	void fronCSVFILE(string filename, string textKey, vector<string> otherAttrs);//TODO
 	
 	Corpus();
 	~Corpus();
@@ -24,10 +28,4 @@ private:
 
 };
 
-Corpus::Corpus()
-{
-}
-
-Corpus::~Corpus()
-{
-}
+#endif
