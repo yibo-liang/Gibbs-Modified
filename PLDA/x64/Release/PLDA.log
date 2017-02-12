@@ -1,9 +1,0 @@
-﻿  main.cpp
-     Creating library E:\git\NaivePHLDA\x64\Release\PLDA.lib and object E:\git\NaivePHLDA\x64\Release\PLDA.exp
-  Generating code
-  16 of 4570 functions ( 0.4%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    54 functions had inline decision re-evaluated but remain unchanged
-  Finished generating code
-  PLDA.vcxproj -> E:\git\NaivePHLDA\x64\Release\PLDA.exe
-  PLDA.vcxproj -> E:\git\NaivePHLDA\x64\Release\PLDA.pdb (Full PDB)
