@@ -96,7 +96,6 @@ int slave(JobConfig config) {
 
 int main(int argc, char *argv[]) {
 
-	cin.ignore();
 	MPI_Init(&argc, &argv);
 
 	// Get the rank of the process
@@ -113,6 +112,7 @@ int main(int argc, char *argv[]) {
 	if (getProgramOption(argc, argv, &config) != 0) return 1;
 
 	if (worldRank == 0) {
+		std::cin.ignore();
 		master(config);
 	}
 	else {

@@ -80,7 +80,7 @@ namespace MPIHelper {
 		MPI_Bcast(buffer, len, MPI_BYTE, ROOT, MPI_COMM_WORLD);
 
 		if (ROOT != currentProc) {
-			boost::iostreams::basic_array_source<char> device(data, len);
+			boost::iostreams::basic_array_source<char> device(buffer, len);
 			boost::iostreams::stream<boost::iostreams::basic_array_source<char> > stream(device);
 			boost::archive::binary_iarchive receiveArchive(stream);
 			receiveArchive >> obj;
