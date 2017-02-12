@@ -27,20 +27,19 @@ void Corpus::fromTextFile(string filename, int textIdxStart, map<int, string> ot
 
 		//new Document
 		Document doc;
-		doc.text = str;
 
 		//read text, and store new words to word map
 		for (int i = textIdxStart; i < tokens.size(); i++) {
 			string word = tokens[i];
-			auto it = word2IndexMap.find(word);
-			if (it == word2IndexMap.end()) {
-				int new_index = word2IndexMap.size();
+			auto it = wordToIndex.find(word);
+			if (it == wordToIndex.end()) {
+				int new_index = wordToIndex.size();
 				//add word index to document
 				doc.words.push_back(new_index);
 				//add to word->index map
-				word2IndexMap[word] = new_index;
+				wordToIndex[word] = new_index;
 				//add to index->word map
-				index2WordMap[new_index] = word;
+				indexToWord[new_index] = word;
 			}
 			else {
 				doc.words.push_back(it->second);
@@ -49,6 +48,7 @@ void Corpus::fromTextFile(string filename, int textIdxStart, map<int, string> ot
 		for (auto const &it : otherAttrsIdx) {
 			doc.info[tokens[it.first]] = it.second;
 		}
+		if (doc.wordCount() <= 0) continue;
 		this->documents.push_back(doc);
 		this->totalWordCount += doc.wordCount();
 		//read other usefull information

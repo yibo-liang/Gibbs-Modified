@@ -136,12 +136,12 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(MSMPI_INC);$(MSMPI_INC)\x86;$(BOOST_ROOT);</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSMPI_INC);$(MSMPI_INC)\x64;$(BOOST_ROOT);</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
     <Link>
@@ -161,6 +161,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
     <ClCompile Include="task.cpp" />
+    <ClCompile Include="task_executor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="corpus.h" />
@@ -169,8 +170,10 @@
     <ClInclude Include="job_config.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="model.h" />
+    <ClInclude Include="mpi_helper.h" />
     <ClInclude Include="shared_header.h" />
     <ClInclude Include="task.h" />
+    <ClInclude Include="task_executor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

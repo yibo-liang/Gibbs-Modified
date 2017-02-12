@@ -1,7 +1,13 @@
 
 #include "shared_header.h"
 #include "job_config.h"
+#include "job.h"
+#include "task_executor.h"
 #include <mpi.h>
+
+/*
+Main file : controlls the load, running mode and exit of the program
+*/
 
 namespace po = boost::program_options;
 
@@ -22,6 +28,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
 		("hierarch,h", po::value<std::vector<int> >()->multitoken(), "set hierarchical structure in form (ignore brackets) [n1 n2 n3 ...], if unset, it will be a single topic model")
+		("task-per-proc,tpp", po::value<int>(&n), "set task number per process")
 		;
 
 	po::variables_map vm;
@@ -35,6 +42,9 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 
 	if (vm.count("file")) {
 		config->filename = vm["file"].as<string>();
+	}
+	else {
+		return 1;
 	}
 	if (vm.count("filetype")) {
 		config->filetype = vm["filetype"].as<string>();
@@ -57,13 +67,36 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	else {
 		config->hierarchStructure = vector<int>({ 1 });
 	}
+	if (vm.count("task-per-proc")) {
+		config->taskPerProcess = vm["task-per-proc"].as<int>();
+	}
 
 
 	return 0;
 }
 
+int master(JobConfig &config) {
+	Job lda_job(config);
+	TaskExecutor executor(config.processID);
+
+	lda_job.startJob(executor);
+	int k = 0;
+	for (int i = 0; i < 100000009; i++) {
+		k++;
+	}
+	return k;
+}
+
+int slave(JobConfig config) {
+
+	TaskExecutor executor(config.processID);
+	executor.receiveRemoteTasks();
+	return 0;
+}
+
 int main(int argc, char *argv[]) {
 
+	cin.ignore();
 	MPI_Init(&argc, &argv);
 
 	// Get the rank of the process
@@ -73,13 +106,17 @@ int main(int argc, char *argv[]) {
 	int worldSize;
 	MPI_Comm_size(MPI_COMM_WORLD, &worldSize);
 
-	if (worldRank == 0) {
-		JobConfig config;
-		getProgramOption(argc, argv, &config);
+	JobConfig config;
+	config.processID = worldRank;
+	config.totalProcessCount = worldSize;
+	
+	if (getProgramOption(argc, argv, &config) != 0) return 1;
 
+	if (worldRank == 0) {
+		master(config);
 	}
 	else {
-		cout << worldRank << "," << worldSize << "\n";
+		slave(config);
 	}
 
 	MPI_Finalize();

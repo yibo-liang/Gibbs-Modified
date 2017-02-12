@@ -9,9 +9,11 @@ class JobConfig
 {
 public:
 
-	int process_number;
+	int processID;
+	int totalProcessCount;
 
-
+	int taskPerProcess=4;
+	
 	//modelling information
 
 	int iterationNumber = 2000;
@@ -28,6 +30,8 @@ public:
 	string filename = "";
 	string filetype = "txt";
 
+
+	JobConfig(const JobConfig &c);
 	JobConfig();
 	~JobConfig();
 

@@ -8,6 +8,7 @@
 #include "job_config.h"
 #include "corpus.h"
 #include "task.h"
+#include "task_executor.h"
 #include "model.h"
 
 class Job
@@ -15,18 +16,23 @@ class Job
 public:
 
 
-	Job(JobConfig config, Corpus corpus);
+	Job(JobConfig &config);
 	~Job();
 
+	void startJob(TaskExecutor &executor);
 	
 
 private:
 
 	Corpus corpus;
 	JobConfig config;
-	vector<Task> tasks;
-	vector<Task> generateSimpleTasks();
-	vector<Task> generateHierarchicalTasks();
+
+
+	Model createInitialModel();
+	void loadCorpus();
+
+	vector<vector<Task>> generateSimpleTasks(Model &initial_model);
+	vector<vector<Task>> generateHierarchicalTasks(Model &initial_model);
 
 };
 #endif

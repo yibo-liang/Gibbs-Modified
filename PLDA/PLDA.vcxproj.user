@@ -5,8 +5,12 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>--alpha=0.1 -h 10 7 7</LocalDebuggerCommandArguments>
-    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>"$(TargetPath) --alpha=0.01 -h 20 --file="C:/Users/Devid/OneDrive/corpus/all.txt" --filetype=txt"</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+    <LocalDebuggerCommand>D:\Program Files\Microsoft MPI\Bin\mpiexec.exe</LocalDebuggerCommand>
+    <LocalDebuggerAttach>false</LocalDebuggerAttach>
+    <RemoteDebuggerCommand>D:\Program Files\Microsoft MPI\Bin\mpiexec.exe</RemoteDebuggerCommand>
+    <RemoteDebuggerCommandArguments>"$(TargetPath) --alpha=0.01 -h 20 --file="C:/Users/Devid/OneDrive/corpus/all.txt" --filetype=txt"</RemoteDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup>
     <ShowAllFiles>false</ShowAllFiles>

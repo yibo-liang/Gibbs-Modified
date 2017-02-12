@@ -1,8 +1,9 @@
 #pragma once
 
 #include <iostream>
-#include <vector>
-#include <map>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
+#include <unordered_map>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -25,8 +26,14 @@
 using std::vector;
 using std::string;
 using std::map;
+using std::unordered_map;
+using std::tuple;
 using std::cout;
 using std::cin;
 using std::endl;
 template<typename N>
 using vec2d = vector<vector<N>>;
+
+
+template<typename A, typename B>
+using hashmap = unordered_map<A, B>;

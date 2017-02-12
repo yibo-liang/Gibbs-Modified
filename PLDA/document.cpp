@@ -12,8 +12,3 @@ int Document::wordCount()
 {
 	return this->words.size();
 }
-
-int Document::textLength()
-{
-	return this->text.length();
-}
