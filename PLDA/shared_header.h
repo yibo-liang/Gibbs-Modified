@@ -9,7 +9,6 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
-#include <iterator>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/program_options.hpp>

@@ -36,25 +36,23 @@ void Job::startJob(
 	cout << "Done." << endl;
 	cout << "\t" << taskGroups.size() << " task Groups created, each has " << taskGroups.at(0).size() << "tasks" << endl;
 	cout << "------------------------------" << endl;
-
 	cout << "Sending tasks to workers ...." << endl;
 
 	//send tasks to remote mpi process
 
 	auto iter = taskGroups.begin();
-	int proc_n = 0;
+
 	using namespace MPIHelper;
-	for (; iter != taskGroups.end();) {
+	for (int proc_n = 0; proc_n < taskGroups.size(); proc_n++) {
+		auto& group = taskGroups[proc_n];
 		if (proc_n == 0) {
-			executor.receiveLocalTasks(*iter);
-			iter++;
+			executor.receiveMasterTasks(group);
 		}
 		else {
 			mpiSend(*iter, proc_n);
-			taskGroups.erase(iter);
 		}
-		proc_n++;
 	}
+
 	cout << "Done." << endl;
 
 }
@@ -114,16 +112,16 @@ void Job::loadCorpus()
 
 vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 {
-
+	//cout << "generateSimpleTasks 117" << endl;
 	int taskNumber = config.totalProcessCount * config.taskPerProcess;
-
+	//cout << "generateSimpleTasks 127, taskNumber=" << taskNumber << endl;
 
 	Task sampleTask;
 	sampleTask.alpha = initial_model.alpha;
 	sampleTask.beta = initial_model.beta;
 	sampleTask.nwsum = initial_model.nwsum;
 
-
+	//cout << "generateSimpleTasks 126, total p=" << config.totalProcessCount << endl;
 	vector<vector<Task>> result = vector<vector<Task>>(config.totalProcessCount, vector<Task>(config.taskPerProcess, sampleTask));
 	auto& tasksForSingleExecutor = result[0];
 	if (config.parallelType == P_MPI) {
@@ -134,10 +132,10 @@ vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 		int processNumber_i = 0;
 		int taskNumber_i = 0;
 		int wordIterator = 0; //word index iterator of the whole corpus, that is, the total set of word instances of all documents
-
+		//cout << "generateSimpleTasks 138, gsize=" << groupSize << endl;
 		for (int doc_i = 0; doc_i < corpus.documents.size(); doc_i++) {
-			Document doc = corpus.documents[doc_i];
-
+			Document& doc = corpus.documents[doc_i];
+			//cout << "generateSimpleTasks 140, doc_i=" << doc_i<< endl;
 			tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum[doc_i]);
 			for (int docWord_i = 0; docWord_i < doc.wordCount(); docWord_i++) {
 
@@ -150,24 +148,30 @@ vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 				tasksForSingleExecutor[taskNumber_i].z.push_back(k);
 				tasksForSingleExecutor[taskNumber_i].nd[doc_i][k] = initial_model.nd[doc_i][k];
 				tasksForSingleExecutor[taskNumber_i].nw[w][k] = initial_model.nw[w][k];
-
+				//cout << "generateSimpleTasks 153, word_i="<< docWord_i << endl;
 				//next word
 				wordIterator++;
-				if (wordIterator >= groupSize * (taskNumber_i + 1)) {
+				if (wordIterator % groupSize == 0) {
 					taskNumber_i++;
-
 					//next task 
-					if (taskNumber_i % config.taskPerProcess == 0) {
+					if (taskNumber_i % config.taskPerProcess == 0 && processNumber_i != config.totalProcessCount) {
 						processNumber_i++;
+						taskNumber_i = 0;
+						//cout << "generateSimpleTasks 162, processNumber=" << processNumber_i << endl;
 						tasksForSingleExecutor = result[processNumber_i];
+						//cout << "generateSimpleTasks 164" << endl;
+
+						tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum[doc_i]);
+
 					}
 
+					//cout << "Cur tn=" << taskNumber_i << endl;
 				}
 			}
 		}
 
 	}
-
+	//cout << "generateSimpleTasks 170" << endl;
 
 
 	return result;

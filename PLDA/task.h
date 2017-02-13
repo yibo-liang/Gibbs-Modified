@@ -15,7 +15,11 @@ TODO : if gpu is used, every task will be further divided into subtasks for gpu 
 class Task
 {
 public:
-	int parallelMode = P_MPI;
+
+
+	//K & V both used in sampling for Dirichlet process
+	int K; //topic number
+	int V; //vocabulary size
 
 	vector<vector<int>> wordSampling; //a collection of word instance in a subset of the documents, in form of [(doc_id, w, word_id),...]
 	//w is the index in overall word map, word_id is the id in document.
@@ -31,23 +35,16 @@ public:
 	vector<int> nwsum;
 	map<int, int> ndsum;
 
+
+	/*
 	map<int, map<int, int>> ndDiff; //nd difference, stored in map, maximum size = M * K, will be smaller over the iterations
 	map<int, map<int, int>> nwDiff; //nw difference, maximum size = V * K, will be smaller as well
 	map<int, int> nwsumDiff;//nwsum difference, 
-	/* ndsum difference will be none, since the word in each document will not be changed */
-	template<class Archive>
-	void serialize(Archive & ar, const unsigned int version)
-	{
-		ar & wordSampling;
-		ar & z;
-		ar & alpha;
-		ar & beta;
-		ar & nd;
-		ar & nw;
-		ar & nwsum;
-		ar & ndsum;
+	*/
 
-	}
+	/* ndsum difference will be none, since the word in each document will not be changed */
+	
+
 
 	//boost serialisation
 
@@ -55,7 +52,9 @@ public:
 
 	//copy
 	Task(const Task& t) {
-		this->parallelMode = t.parallelMode;
+
+		this->K = t.K;
+		this->V = t.V;
 
 		this->wordSampling = t.wordSampling;
 		this->z = t.z;
@@ -67,15 +66,32 @@ public:
 
 		this->alpha = t.alpha;
 		this->beta = t.beta;
-
+		/*
 		this->ndDiff = t.ndDiff;
 		this->nwDiff = t.nwDiff;
 		this->nwsumDiff = t.nwsumDiff;
+		*/
 	};
 	Task();
 	~Task();
 
 private:
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int version)
+	{
+		ar & alpha;
+		ar & beta;
+		ar & K;
+		ar & V;
+		ar & BOOST_SERIALIZATION_NVP(wordSampling);
+		ar & BOOST_SERIALIZATION_NVP(z);
+		ar & BOOST_SERIALIZATION_NVP(nd);
+		ar & BOOST_SERIALIZATION_NVP(nw);
+		ar & BOOST_SERIALIZATION_NVP(nwsum);
+		ar & BOOST_SERIALIZATION_NVP(ndsum);
+
+	}
 
 
 };

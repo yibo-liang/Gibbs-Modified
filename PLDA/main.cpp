@@ -77,20 +77,19 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 
 int master(JobConfig &config) {
 	Job lda_job(config);
-	TaskExecutor executor(config.processID);
-
+	TaskExecutor executor(config);
 	lda_job.startJob(executor);
-	int k = 0;
-	for (int i = 0; i < 100000009; i++) {
-		k++;
-	}
-	return k;
+	cout << "All Job Done.";
+	cin.ignore();
+	MPI_Barrier(MPI_COMM_WORLD);
+	return 0;
 }
 
 int slave(JobConfig config) {
 
-	TaskExecutor executor(config.processID);
+	TaskExecutor executor(config);
 	executor.receiveRemoteTasks();
+	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 }
 
@@ -112,7 +111,7 @@ int main(int argc, char *argv[]) {
 	if (getProgramOption(argc, argv, &config) != 0) return 1;
 
 	if (worldRank == 0) {
-		std::cin.ignore();
+		//std::cin.ignore();
 		master(config);
 	}
 	else {

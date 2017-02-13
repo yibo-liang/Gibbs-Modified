@@ -1,0 +1,1 @@
+-h 20 -f "C:/Users/Devid/OneDrive/corpus/all.txt" 
