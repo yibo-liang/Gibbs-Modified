@@ -78,7 +78,8 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 int master(JobConfig &config) {
 	Job lda_job(config);
 	TaskExecutor executor(config);
-	lda_job.startJob(executor);
+	lda_job.startMasterJob(executor);
+	executor.execute();
 	cout << "All Job Done.";
 	cin.ignore();
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -89,6 +90,7 @@ int slave(JobConfig config) {
 
 	TaskExecutor executor(config);
 	executor.receiveRemoteTasks();
+	executor.execute();
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 }

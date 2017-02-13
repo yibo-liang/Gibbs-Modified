@@ -39,6 +39,9 @@
     <ClCompile Include="task_executor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="slave_sync_data.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="document.h">
@@ -69,6 +72,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="mpi_helper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="slave_sync_data.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

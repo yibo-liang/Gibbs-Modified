@@ -40,6 +40,36 @@ namespace MPIHelper {
 		return 0;
 	}
 
+
+	template<typename N>
+	int mpiReceive2(N& obj, int senderProc_n) { //second version uses pointer
+
+		int len;
+
+		//cout << "Receiving Object Lenth" << ", proc_n=" << senderProc_n << endl;
+		MPI_Recv(&len, 1, MPI_INT, senderProc_n, lentag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		//cout << "Length received. len=" << len << ", proc_n=" << senderProc_n << endl;
+		char *data = new char[len + 1];
+		MPI_Recv(data, len, MPI_BYTE, senderProc_n, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		//cout << "Object Received, proc_n=" << senderProc_n << endl;
+		data[len] = '\0';
+
+		boost::iostreams::basic_array_source<char> device(data, len);
+		boost::iostreams::stream<boost::iostreams::basic_array_source<char> > stream(device);
+		boost::archive::binary_iarchive receiveArchive(stream);
+
+		
+		receiveArchive >> obj;
+		delete[] data;
+		
+
+		return 0;
+
+	}
+
+
 	template<typename N>
 	N mpiReceive(int senderProc_n) {
 
@@ -84,22 +114,24 @@ namespace MPIHelper {
 
 		char * buffer;
 		if (ROOT == currentProc) {
-			buffer = serialString.c_str();
+			buffer = &serialString[0];
 		}
 		else {
 			//buffer = (void*)malloc((len+1) * sizeof(char));
 			buffer = new char[len + 1];
 		}
 		//broadcast object
+
 		MPI_Bcast(buffer, len, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-		data[len] = '\0';
+		
 		if (ROOT != currentProc) {
+			buffer[len] = '\0';
 			boost::iostreams::basic_array_source<char> device(buffer, len);
 			boost::iostreams::stream<boost::iostreams::basic_array_source<char> > stream(device);
 			boost::archive::binary_iarchive receiveArchive(stream);
 			receiveArchive >> obj;
+			delete[] buffer;
 		}
-		delete[] buffer;
 
 	}
 

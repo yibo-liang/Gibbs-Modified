@@ -4,7 +4,7 @@
 #define TASK_EXECUTOR
 #include "shared_header.h"
 #include "job_config.h"
-#include "sync_data.h"
+#include "slave_sync_data.h"
 #include "task.h"
 #include "model.h"
 
@@ -18,9 +18,10 @@ public:
 	int procNumber;
 	bool isMaster = false;
 
+	Model * model; //model for this topic model task, only available on Master node executor. Generated & initialised from job.
 	
 
-	void receiveMasterTasks(vector<Task> tasks, Model model); // master node task executor should use this, so no mpi is used for faster speed
+	void receiveMasterTasks(vector<Task> tasks, Model * model); // master node task executor should use this, so no mpi is used for faster speed
 	void receiveRemoteTasks(); //all other proecess should use this
 
 	void execute();
@@ -30,10 +31,10 @@ public:
 
 private:
 	
-	vector<Task> tasks;
-	Model model; //model for this topic model task, only available on Master node executor. Generated & initialised from job.
 
-	SynchronisationData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
+	vector<Task> tasks;
+	double * p;
+	SlaveSyncData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
 	void runMaster();
 	void runSlave();
 

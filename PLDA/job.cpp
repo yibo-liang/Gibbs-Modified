@@ -15,7 +15,7 @@ Job::~Job()
 
 
 
-void Job::startJob(
+void Job::startMasterJob(
 	TaskExecutor &executor)
 {
 
@@ -27,7 +27,7 @@ void Job::startJob(
 	cout << "------------------------------" << endl;
 
 	cout << "Initialising LDA Model ... ";
-	Model model = createInitialModel();
+	model = createInitialModel();
 	cout << "Done." << endl;
 	cout << "------------------------------" << endl;
 
@@ -40,13 +40,14 @@ void Job::startJob(
 
 	//send tasks to remote mpi process
 
+
 	auto iter = taskGroups.begin();
 
 	using namespace MPIHelper;
 	for (int proc_n = 0; proc_n < taskGroups.size(); proc_n++) {
 		auto& group = taskGroups[proc_n];
 		if (proc_n == 0) {
-			executor.receiveMasterTasks(group);
+			executor.receiveMasterTasks(group, &model);
 		}
 		else {
 			mpiSend(*iter, proc_n);
@@ -117,6 +118,8 @@ vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 	//cout << "generateSimpleTasks 127, taskNumber=" << taskNumber << endl;
 
 	Task sampleTask;
+	sampleTask.K = model.K;
+	sampleTask.V = model.V;
 	sampleTask.alpha = initial_model.alpha;
 	sampleTask.beta = initial_model.beta;
 	sampleTask.nwsum = initial_model.nwsum;

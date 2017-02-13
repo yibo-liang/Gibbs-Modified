@@ -22,7 +22,7 @@ If Slave:
 		broatcast new nd, nw, nwsum
 */
 
-void TaskExecutor::receiveMasterTasks(vector<Task> tasks, Model model)
+void TaskExecutor::receiveMasterTasks(vector<Task> tasks, Model * model)
 {
 	//used only by ROOT
 	this->tasks = tasks;
@@ -33,20 +33,54 @@ void TaskExecutor::receiveMasterTasks(vector<Task> tasks, Model model)
 void TaskExecutor::receiveRemoteTasks()
 {
 	using namespace MPIHelper;
-	this->tasks = mpiReceive<vector<Task>>(ROOT);
+	mpiReceive2(this->tasks, ROOT);
 	cout << "Proc ID = " << this->procNumber << " Received " << this->tasks.size() << " tasks" << endl;
 }
 
 
-template<typename A, typename B>
-void sycMaps(std::map<A, B> & a, std::map<A, B> & b) {
-	//adding changes from a to b. 
 
-	for (auto const& source : a) {
-		b[source.first] += a[source.first];
+SlaveSyncData updateModel(Model & model, vector<vector<SlaveSyncData>> & iterationSyncCollector) {
+
+
+
+	SlaveSyncData result;
+
+	for (auto &execCollect : iterationSyncCollector) {
+		for (auto &sync_data : execCollect) {
+			//nd diff
+			for (auto &ndIterator : sync_data.ndDiff) {
+				int m = ndIterator.first;
+				for (auto &topicIterator : ndIterator.second) {
+					int topic = topicIterator.first;
+					model.nd[m][topic] += topicIterator.second;
+					result.ndDiff[m][topic] = model.nd[m][topic];
+
+				}
+			}
+			//nw diff
+
+			for (auto &nwIterator : sync_data.nwDiff) {
+				int i = nwIterator.first;
+				for (auto &topicIterator : nwIterator.second) {
+					int topic = topicIterator.first;
+					model.nw[i][topic] += topicIterator.second;
+					result.nwDiff[i][topic] = model.nw[i][topic];
+				}
+			}
+
+			//ndsum diff
+			for (auto &nwsumIterator : sync_data.nwsumDiff) {
+				int topic = nwsumIterator.first;
+				model.nwsum[topic] += nwsumIterator.second;
+				result.nwsumDiff[topic] = model.nwsum[topic];
+			}
+
+
+		}
 	}
-
+	return result;
 }
+
 
 void TaskExecutor::execute()
 {
@@ -54,43 +88,47 @@ void TaskExecutor::execute()
 	using namespace MPIHelper;
 	int iteration_i = 0;
 	while (iteration_i < config.iterationNumber) {
-		vector<SynchronisationData> executorSyncCollector;
+		cout << "Iteration " << iteration_i << endl;
+		vector<SlaveSyncData> executorSyncCollector;
+
 		for (auto &task : tasks) {
+			cout << "Doing Local Task pid=" << config.processID << endl;
 			executorSyncCollector.push_back(sampleTask(task));
 		}
+
+
 		if (config.processID == MPIHelper::ROOT) {
-			vector<vector<SynchronisationData>> iterationSyncCollector(1, executorSyncCollector);
+			vector<vector<SlaveSyncData>> iterationSyncCollector(config.totalProcessCount);
+			iterationSyncCollector[0] = executorSyncCollector;
 
 			//receive all sync data from slaves
 			for (int i = 0; i < config.totalProcessCount; i++) {
 				if (i != ROOT) {
-					iterationSyncCollector.push_back(mpiReceive<vector<SynchronisationData>>(i));
+					//iterationSyncCollector.push_back(mpiReceive<vector<SynchronisationData>>(i));
+					mpiReceive2<vector<SlaveSyncData>>(iterationSyncCollector[i], i);
 				}
 			}
 			//iterate all syn data, sum all changes and broadcast to all workers
-			SynchronisationData globalSyncData;
-			for (auto &execCollect : iterationSyncCollector) {
-				for (auto &sync_data : execCollect) {
-					//nd diff
-					for (auto &ndIterator : sync_data.ndDiff) {
-						int m = ndIterator.first;
-						for (auto &topicIterator : ndIterator.second) {
-							int topic = topicIterator.first;
-							model.nd[m][topic] += topicIterator.second;
-						}
-					}
-
-					//nw diff
-
-					//ndsum diff
-
-				}
-			}
-
+			SlaveSyncData update = updateModel(*model, iterationSyncCollector);
+			mpiBroadCast(update, ROOT, config.processID);
 		}
 		else {
+			//send slave sync data
 			mpiSend(executorSyncCollector, ROOT);
+
+			//receive master's update by broadcasting
+			SlaveSyncData globalSyncData;
+			mpiBroadCast(globalSyncData, ROOT, config.processID);
+
+			for (auto& task : tasks) {
+				task.nd = globalSyncData.ndDiff;
+				task.nw = globalSyncData.nwDiff;
+				for (auto& doc : globalSyncData.nwsumDiff) {
+					task.nwsum[doc.first] = doc.second;
+				}
+			}
 		}
+		iteration_i++;
 	}
 }
 
@@ -98,6 +136,7 @@ TaskExecutor::TaskExecutor(JobConfig config)
 {
 	this->config = config;
 	if (config.processID == MPIHelper::ROOT) isMaster = true;
+	this->p = new double[config.hierarchStructure[0]];
 
 }
 
@@ -105,15 +144,16 @@ TaskExecutor::~TaskExecutor()
 {
 }
 
-SynchronisationData TaskExecutor::sampleTask(Task & task)
+SlaveSyncData TaskExecutor::sampleTask(Task & task)
 {
-	SynchronisationData syncData;
+
+	SlaveSyncData syncData;
 
 	double alpha = task.alpha;
 	double beta = task.beta;
-	double K = task.K;
-	double Vbeta = task.V * beta;
-	double Kalpha = task.K * alpha;
+	int K = task.K;
+	double Vbeta = (double)task.V * beta;
+	double Kalpha = (double)task.K * alpha;
 
 	auto wordIterator = task.wordSampling.begin();
 	auto assignmentIterator = task.z.begin();
@@ -129,9 +169,10 @@ SynchronisationData TaskExecutor::sampleTask(Task & task)
 		*/
 
 		//in job.cpp, we did push_back(vector<int>({ doc_i, w, docWord_i }))
-		int m = (*wordIterator)[0];
-		int w = (*wordIterator)[1];
-		int n = (*wordIterator)[2];
+		vector<int> word = *wordIterator;
+		int m = word.at(0);
+		int w = word.at(1);
+		int n = word.at(2);
 		//z[m][n] 
 		int topic = *assignmentIterator;
 
@@ -141,15 +182,16 @@ SynchronisationData TaskExecutor::sampleTask(Task & task)
 		task.nwsum[topic] -= 1;
 		task.ndsum[m] -= 1;
 
+
 		//changes to be sychronized
 		syncData.nwDiff[w][topic] -= 1;
 		syncData.ndDiff[m][topic] -= 1;
 		syncData.nwsumDiff[topic] -= 1;
 
-		vector<double> p;
+		//double* p = new double[K];
 		for (int k = 0; k < K; k++) {
-			p[k] = (task.nw[w][k] + beta) / (task.nwsum[k] + Vbeta) *
-				(task.nd[m][k] + alpha) / (task.ndsum[m] + Kalpha);
+			p[k] = (task.nw.at(w).at(k) + beta) / (task.nwsum.at(k) + Vbeta) *
+				(task.nd.at(m).at(k) + alpha) / (task.ndsum.at(m) + Kalpha);
 		}
 
 		// cumulate multinomial parameters

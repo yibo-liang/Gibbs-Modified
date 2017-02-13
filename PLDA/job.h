@@ -19,7 +19,7 @@ public:
 	Job(JobConfig &config);
 	~Job();
 
-	void startJob(TaskExecutor &executor);
+	void startMasterJob(TaskExecutor &executor);
 	
 
 private:
@@ -27,6 +27,7 @@ private:
 	Corpus corpus;
 	JobConfig config;
 
+	Model model;
 
 	Model createInitialModel();
 	void loadCorpus();

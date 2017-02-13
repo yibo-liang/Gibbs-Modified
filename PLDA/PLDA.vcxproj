@@ -160,6 +160,7 @@
     <ClCompile Include="job_config.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
+    <ClCompile Include="slave_sync_data.cpp" />
     <ClCompile Include="task.cpp" />
     <ClCompile Include="task_executor.cpp" />
   </ItemGroup>
@@ -172,6 +173,7 @@
     <ClInclude Include="model.h" />
     <ClInclude Include="mpi_helper.h" />
     <ClInclude Include="shared_header.h" />
+    <ClInclude Include="slave_sync_data.h" />
     <ClInclude Include="task.h" />
     <ClInclude Include="task_executor.h" />
   </ItemGroup>
