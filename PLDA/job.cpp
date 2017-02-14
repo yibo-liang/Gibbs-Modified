@@ -47,9 +47,11 @@ void Job::startMasterJob(
 	for (int proc_n = 0; proc_n < taskGroups.size(); proc_n++) {
 		auto& group = taskGroups[proc_n];
 		if (proc_n == 0) {
+			cout << "send to Master" << endl;
 			executor.receiveMasterTasks(group, &model);
 		}
 		else {
+			cout << "send to slave " << proc_n << endl;
 			mpiSend(*iter, proc_n);
 		}
 	}
@@ -62,6 +64,7 @@ int RandInteger(int min, int max)
 {
 	int range = max - min + 1;
 	int num = rand() % range + min;
+
 	return num;
 }
 
@@ -90,7 +93,7 @@ Model Job::createInitialModel()
 
 		for (int i = 0; i < model.z[m].size(); i++) {
 			//random topic
-			int topic = RandInteger(0, model.K);
+			int topic = RandInteger(0, model.K-1);
 			int w = doc.words[i];
 
 			model.z[m][i] = topic;
@@ -137,43 +140,63 @@ vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 		int wordIterator = 0; //word index iterator of the whole corpus, that is, the total set of word instances of all documents
 		//cout << "generateSimpleTasks 138, gsize=" << groupSize << endl;
 		for (int doc_i = 0; doc_i < corpus.documents.size(); doc_i++) {
-			Document& doc = corpus.documents[doc_i];
+			Document& doc = corpus.documents.at(doc_i);
 			//cout << "generateSimpleTasks 140, doc_i=" << doc_i<< endl;
-			tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum[doc_i]);
+			//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
 			for (int docWord_i = 0; docWord_i < doc.wordCount(); docWord_i++) {
 
 
-				int w = doc.words[docWord_i];
+				int w = doc.words.at(docWord_i);
 				tasksForSingleExecutor[taskNumber_i]
 					.wordSampling
 					.push_back(vector<int>({ doc_i, w, docWord_i }));
 				int k = initial_model.z[doc_i][docWord_i]; //k, topic assignment of the word in doc
 				tasksForSingleExecutor[taskNumber_i].z.push_back(k);
-				tasksForSingleExecutor[taskNumber_i].nd[doc_i][k] = initial_model.nd[doc_i][k];
-				tasksForSingleExecutor[taskNumber_i].nw[w][k] = initial_model.nw[w][k];
+				tasksForSingleExecutor[taskNumber_i].vocabulary[w] = true;
+				tasksForSingleExecutor[taskNumber_i].docCollection[doc_i] = true;
+
 				//cout << "generateSimpleTasks 153, word_i="<< docWord_i << endl;
 				//next word
 				wordIterator++;
 				if (wordIterator % groupSize == 0) {
+
+					//before going to next task, add neccessary nd nw segment 
+
+
+
 					taskNumber_i++;
 					//next task 
-					if (taskNumber_i % config.taskPerProcess == 0 && processNumber_i != config.totalProcessCount) {
+					if (taskNumber_i % config.taskPerProcess == 0 ) {
 						processNumber_i++;
 						taskNumber_i = 0;
-						//cout << "generateSimpleTasks 162, processNumber=" << processNumber_i << endl;
 						tasksForSingleExecutor = result[processNumber_i];
-						//cout << "generateSimpleTasks 164" << endl;
-
-						tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum[doc_i]);
+						//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
 
 					}
 
 					//cout << "Cur tn=" << taskNumber_i << endl;
 				}
+				
 			}
 		}
 
 	}
+	for (auto &vec : result) {
+		for (auto &task : vec) {
+			for (auto &it : task.vocabulary) {
+				task.nw[it.first] = initial_model.nw[it.first];
+				
+			}
+
+			for (auto &it : task.docCollection) {
+				task.nd[it.first] = initial_model.nd[it.first];
+				task.ndsum[it.first] = initial_model.ndsum[it.first];
+			}
+
+			
+		}
+	}
+
 	//cout << "generateSimpleTasks 170" << endl;
 
 

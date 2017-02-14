@@ -33,7 +33,6 @@ private:
 	
 
 	vector<Task> tasks;
-	double * p;
 	SlaveSyncData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
 	void runMaster();
 	void runSlave();

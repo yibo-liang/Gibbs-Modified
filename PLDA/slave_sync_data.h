@@ -7,9 +7,9 @@
 class SlaveSyncData
 {
 public:
-	map<int, map<int, int>> ndDiff; //nd difference, stored in map, maximum size = M * K, will be smaller over the iterations
-	map<int, map<int, int>> nwDiff; //nw difference, maximum size = V * K, will be smaller as well
-	map<int, int> nwsumDiff;//nwsum difference, 
+	hashmap<int, hashmap<int,int>> ndDiff; //nd difference, stored in map, maximum size = M * K, will be smaller over the iterations
+	hashmap<int, hashmap<int,int>> nwDiff; //nw difference, maximum size = V * K, will be smaller as well
+	hashmap<int, int> nwsumDiff;//nwsum difference, 
 
 	SlaveSyncData(const SlaveSyncData& d);
 	SlaveSyncData();

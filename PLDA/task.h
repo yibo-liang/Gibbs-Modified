@@ -28,12 +28,17 @@ public:
 	vector<int> z; //the topic assignment of word word_id in document doc_id, z should have same length as wordSampling 
 	//index is the number where this word appear in the 
 
+	hashmap<int, bool> vocabulary;
+	hashmap<int, bool> docCollection;
+	
+
 	double alpha, beta;
 
-	map<int, map<int, int>> nd; //partial nd
-	map<int, map<int, int>> nw; //partial nw
+
+	hashmap<int, vector<int>> nd; //partial nd
+	hashmap<int, vector<int>> nw; //partial nw
 	vector<int> nwsum;
-	map<int, int> ndsum;
+	hashmap<int, int> ndsum;
 
 
 	/*

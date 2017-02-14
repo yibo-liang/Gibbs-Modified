@@ -12,7 +12,7 @@ public:
 	int processID;
 	int totalProcessCount;
 
-	int taskPerProcess=4;
+	int taskPerProcess=1;
 	
 	//modelling information
 

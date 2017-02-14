@@ -84,15 +84,18 @@ SlaveSyncData updateModel(Model & model, vector<vector<SlaveSyncData>> & iterati
 
 void TaskExecutor::execute()
 {
-
+	Timer timer;
 	using namespace MPIHelper;
 	int iteration_i = 0;
 	while (iteration_i < config.iterationNumber) {
-		cout << "Iteration " << iteration_i << endl;
-		vector<SlaveSyncData> executorSyncCollector;
 
+		if (config.processID == ROOT) {
+			timer.reset();
+		}
+
+		vector<SlaveSyncData> executorSyncCollector;
+		SlaveSyncData update;
 		for (auto &task : tasks) {
-			cout << "Doing Local Task pid=" << config.processID << endl;
 			executorSyncCollector.push_back(sampleTask(task));
 		}
 
@@ -109,7 +112,7 @@ void TaskExecutor::execute()
 				}
 			}
 			//iterate all syn data, sum all changes and broadcast to all workers
-			SlaveSyncData update = updateModel(*model, iterationSyncCollector);
+			update = updateModel(*model, iterationSyncCollector);
 			mpiBroadCast(update, ROOT, config.processID);
 		}
 		else {
@@ -117,18 +120,43 @@ void TaskExecutor::execute()
 			mpiSend(executorSyncCollector, ROOT);
 
 			//receive master's update by broadcasting
-			SlaveSyncData globalSyncData;
-			mpiBroadCast(globalSyncData, ROOT, config.processID);
+			mpiBroadCast(update, ROOT, config.processID);
 
-			for (auto& task : tasks) {
-				task.nd = globalSyncData.ndDiff;
-				task.nw = globalSyncData.nwDiff;
-				for (auto& doc : globalSyncData.nwsumDiff) {
-					task.nwsum[doc.first] = doc.second;
-				}
+
+		}
+
+		//update tasks for this 
+		for (auto& task : tasks) {
+			//task.nd = globalSyncData.ndDiff;
+			//task.nw = globalSyncData.nwDiff;
+
+			for (auto& it : update.ndDiff) {
+				int m = it.first;
+				if (task.nd.count(m))
+					for (auto& k : it.second) {
+						task.nd[m][k.first] = k.second;
+					}
+			}
+
+			for (auto& it : update.nwDiff) {
+				int v = it.first;
+				if (task.nw.count(v))
+					for (auto& k : it.second) {
+						task.nw[v][k.first] = k.second;
+					}
+			}
+
+
+			for (auto& doc : update.nwsumDiff) {
+				task.nwsum[doc.first] = doc.second;
 			}
 		}
 		iteration_i++;
+		if (config.processID == ROOT) {
+			cout << "Iteration " << iteration_i;
+			double t2 = timer.elapsed();
+			cout << ", elapsed" << t2 << "" << endl;
+		}
 	}
 }
 
@@ -136,7 +164,6 @@ TaskExecutor::TaskExecutor(JobConfig config)
 {
 	this->config = config;
 	if (config.processID == MPIHelper::ROOT) isMaster = true;
-	this->p = new double[config.hierarchStructure[0]];
 
 }
 
@@ -155,9 +182,8 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 	double Vbeta = (double)task.V * beta;
 	double Kalpha = (double)task.K * alpha;
 
-	auto wordIterator = task.wordSampling.begin();
-	auto assignmentIterator = task.z.begin();
-	for (; wordIterator != task.wordSampling.end();) {
+
+	for (int wi = 0; wi < task.wordSampling.size(); wi++) {
 
 		/*
 			TODO: has to test which is better
@@ -169,18 +195,18 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 		*/
 
 		//in job.cpp, we did push_back(vector<int>({ doc_i, w, docWord_i }))
-		vector<int> word = *wordIterator;
-		int m = word.at(0);
-		int w = word.at(1);
-		int n = word.at(2);
+		vector<int> tempWord = task.wordSampling.at(wi);
+		int m = tempWord.at(0);
+		int w = tempWord.at(1);
+		int n = tempWord.at(2);
 		//z[m][n] 
-		int topic = *assignmentIterator;
+		int topic = task.z.at(wi);
 
 		//local copy of task
-		task.nw[w][topic] -= 1;
-		task.nd[m][topic] -= 1;
-		task.nwsum[topic] -= 1;
-		task.ndsum[m] -= 1;
+		//task.nw[w][topic] -= 1;
+		//task.nd[m][topic] -= 1;
+		//task.nwsum[topic] -= 1;
+		//task.ndsum[m] -= 1;
 
 
 		//changes to be sychronized
@@ -188,10 +214,14 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 		syncData.ndDiff[m][topic] -= 1;
 		syncData.nwsumDiff[topic] -= 1;
 
-		//double* p = new double[K];
+		double* p = new double[K];
 		for (int k = 0; k < K; k++) {
-			p[k] = (task.nw.at(w).at(k) + beta) / (task.nwsum.at(k) + Vbeta) *
-				(task.nd.at(m).at(k) + alpha) / (task.ndsum.at(m) + Kalpha);
+			double A = task.nw.at(w).at(k) - 1;
+			double B = task.nwsum.at(k) - 1;
+			double C = task.nd.at(m).at(k) - 1;
+			double D = task.ndsum.at(m) - 1;
+			p[k] = (A + beta) / (B + Vbeta) *
+				(C + alpha) / (D + Kalpha);
 		}
 
 		// cumulate multinomial parameters
@@ -206,20 +236,19 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 				break;
 			}
 		}
+		delete[] p;
 
-		task.nw[w][topic] += 1;
-		task.nd[m][topic] += 1;
-		task.nwsum[topic] += 1;
-		task.ndsum[m] += 1;
+		//task.nw[w][topic] += 1;
+		//task.nd[m][topic] += 1;
+		//task.nwsum[topic] += 1;
+		//task.ndsum[m] += 1;
 
 		syncData.nwDiff[w][topic] += 1;
 		syncData.ndDiff[m][topic] += 1;
 		syncData.nwsumDiff[topic] += 1;
 
-		*assignmentIterator = topic;
+		task.z[wi] = topic;
 
-		wordIterator++;
-		assignmentIterator++;
 
 	}
 	return syncData;

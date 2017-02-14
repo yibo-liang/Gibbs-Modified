@@ -3,6 +3,8 @@
 #include <iostream>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/map.hpp>
+#include <boost/serialization/unordered_map.hpp>
+#include <map>
 #include <unordered_map>
 #include <fstream>
 #include <iostream>
@@ -13,6 +15,8 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/program_options.hpp>
 
+#include "timer.h"
+
 #define P_MPI 10001
 #define P_GPU 10002
 #define P_HIBRID 10003
@@ -21,7 +25,7 @@
 #define NAIVE2_HIERARCHICAL_MODEL 802
 
 
-
+using std::clock;
 using std::vector;
 using std::string;
 using std::map;
