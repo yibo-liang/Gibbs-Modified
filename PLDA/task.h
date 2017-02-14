@@ -18,6 +18,7 @@ public:
 
 
 	//K & V both used in sampling for Dirichlet process
+	int id;
 	int K; //topic number
 	int V; //vocabulary size
 
@@ -57,7 +58,7 @@ public:
 
 	//copy
 	Task(const Task& t) {
-
+		this->id = t.id;
 		this->K = t.K;
 		this->V = t.V;
 
@@ -85,6 +86,7 @@ private:
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)
 	{
+		ar & id;
 		ar & alpha;
 		ar & beta;
 		ar & K;

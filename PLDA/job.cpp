@@ -130,6 +130,8 @@ vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 	//cout << "generateSimpleTasks 126, total p=" << config.totalProcessCount << endl;
 	vector<vector<Task>> result = vector<vector<Task>>(config.totalProcessCount, vector<Task>(config.taskPerProcess, sampleTask));
 	auto& tasksForSingleExecutor = result[0];
+	
+
 	if (config.parallelType == P_MPI) {
 		int groupSize = corpus.totalWordCount / (taskNumber)+1;
 
@@ -181,8 +183,11 @@ vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 		}
 
 	}
-	for (auto &vec : result) {
-		for (auto &task : vec) {
+	for (int pid = 0; pid < result.size();pid++) {
+		auto & vec = result[pid];
+		for (int task_id = 0; task_id < vec.size();task_id++) {
+			auto & task = vec[task_id];
+			task.id = task_id;
 			for (auto &it : task.vocabulary) {
 				task.nw[it.first] = initial_model.nw[it.first];
 				

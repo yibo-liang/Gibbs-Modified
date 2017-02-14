@@ -39,70 +39,85 @@ void TaskExecutor::receiveRemoteTasks()
 
 
 
-SlaveSyncData updateModel(Model & model, vector<vector<SlaveSyncData>> & iterationSyncCollector) {
+vector<vector<SlaveSyncData>> updateModel(Model & model, vector<vector<SlaveSyncData>> & iterationSyncCollector, JobConfig config) {
 
 
+	vector<vector<SlaveSyncData>> resultArray(config.totalProcessCount, vector<SlaveSyncData>(config.taskPerProcess, SlaveSyncData()));
 
-	SlaveSyncData result;
-
-	for (auto &execCollect : iterationSyncCollector) {
-		for (auto &sync_data : execCollect) {
+	for (int collection_id = 0; collection_id < iterationSyncCollector.size(); collection_id++) {
+		for (int task_iter_id = 0; task_iter_id < iterationSyncCollector[collection_id].size(); task_iter_id++) {
+			SlaveSyncData old_sync_data = iterationSyncCollector[collection_id][task_iter_id];
+			int pid = old_sync_data.pid;
+			int task_id = old_sync_data.task_id;
+			SlaveSyncData new_sync_data = resultArray[pid][task_id];
 			//nd diff
-			for (auto &ndIterator : sync_data.ndDiff) {
+			for (auto &ndIterator : old_sync_data.ndDiff) {
 				int m = ndIterator.first;
-				for (auto &topicIterator : ndIterator.second) {
-					int topic = topicIterator.first;
-					model.nd[m][topic] += topicIterator.second;
-					result.ndDiff[m][topic] = model.nd[m][topic];
+				for (int i = 0; i < model.K; i++) {
+					model.nd[m][i] += ndIterator.second[i];
 
+					if (new_sync_data.ndDiff[m].size() == 0) {
+						new_sync_data.ndDiff[m] = vector<int>(model.K);
+					}
+					new_sync_data.ndDiff[m][i] = model.nd[m][i];
 				}
 			}
 			//nw diff
 
-			for (auto &nwIterator : sync_data.nwDiff) {
-				int i = nwIterator.first;
-				for (auto &topicIterator : nwIterator.second) {
-					int topic = topicIterator.first;
-					model.nw[i][topic] += topicIterator.second;
-					result.nwDiff[i][topic] = model.nw[i][topic];
+			for (auto &nwIterator : old_sync_data.nwDiff) {
+				int w = nwIterator.first;
+				for (int i = 0; i < model.K; i++) {
+					model.nw[w][i] += nwIterator.second[i];
+
+					if (new_sync_data.nwDiff[w].size() == 0) {
+						new_sync_data.nwDiff[w] = vector<int>(model.K);
+					}
+					new_sync_data.nwDiff[w][i] = model.nw[w][i];
 				}
 			}
 
 			//ndsum diff
-			for (auto &nwsumIterator : sync_data.nwsumDiff) {
+			for (auto &nwsumIterator : old_sync_data.nwsumDiff) {
 				int topic = nwsumIterator.first;
 				model.nwsum[topic] += nwsumIterator.second;
-				result.nwsumDiff[topic] = model.nwsum[topic];
+				new_sync_data.nwsumDiff[topic] = model.nwsum[topic];
 			}
-
 
 		}
 	}
-	return result;
+
+
+	return resultArray;
 }
 
 
 void TaskExecutor::execute()
 {
-	Timer timer;
+	Timer t;
 	using namespace MPIHelper;
 	int iteration_i = 0;
 	while (iteration_i < config.iterationNumber) {
 
 		if (config.processID == ROOT) {
-			timer.reset();
+			t.reset();
 		}
 
 		vector<SlaveSyncData> executorSyncCollector;
-		SlaveSyncData update;
+
+		
 		for (auto &task : tasks) {
 			executorSyncCollector.push_back(sampleTask(task));
-		}
 
+		}
+		//debug
+		for (auto &str_t : timeRecord) {
+			cout << str_t.first << ": " << str_t.second << endl;
+		}
+		vector<SlaveSyncData> update;
 
 		if (config.processID == MPIHelper::ROOT) {
 			vector<vector<SlaveSyncData>> iterationSyncCollector(config.totalProcessCount);
-			iterationSyncCollector[0] = executorSyncCollector;
+			iterationSyncCollector[ROOT] = executorSyncCollector;
 
 			//receive all sync data from slaves
 			for (int i = 0; i < config.totalProcessCount; i++) {
@@ -112,16 +127,23 @@ void TaskExecutor::execute()
 				}
 			}
 			//iterate all syn data, sum all changes and broadcast to all workers
-			update = updateModel(*model, iterationSyncCollector);
-			mpiBroadCast(update, ROOT, config.processID);
+			vector<vector<SlaveSyncData>>  updateCollection = updateModel(*model, iterationSyncCollector, config);
+
+			for (int pi = 0; pi < config.totalProcessCount; pi++) {
+				if (pi != ROOT)
+					mpiSend(updateCollection[pi], pi);
+			}
+
+			update = updateCollection[ROOT];
+			//mpiBroadCast(update, ROOT, config.processID);
 		}
 		else {
 			//send slave sync data
 			mpiSend(executorSyncCollector, ROOT);
 
 			//receive master's update by broadcasting
-			mpiBroadCast(update, ROOT, config.processID);
-
+			
+			mpiReceive2(update, ROOT);
 
 		}
 
@@ -129,32 +151,38 @@ void TaskExecutor::execute()
 		for (auto& task : tasks) {
 			//task.nd = globalSyncData.ndDiff;
 			//task.nw = globalSyncData.nwDiff;
-
-			for (auto& it : update.ndDiff) {
+			int task_id = task.id;
+			SlaveSyncData taskUpdate = update[task.id];
+			for (auto& it : taskUpdate.ndDiff) {
 				int m = it.first;
 				if (task.nd.count(m))
-					for (auto& k : it.second) {
-						task.nd[m][k.first] = k.second;
+					for (int i = 0; i < it.second.size(); i++) {
+						task.nd[m][i] = it.second[i];
 					}
-			}
 
-			for (auto& it : update.nwDiff) {
+				//for (auto& k : it.second) {
+				//	task.nd[m][k.first] = k.second;
+				//}
+			}
+			for (auto& it : taskUpdate.nwDiff) {
 				int v = it.first;
 				if (task.nw.count(v))
-					for (auto& k : it.second) {
-						task.nw[v][k.first] = k.second;
+					for (int i = 0; i < it.second.size(); i++) {
+						task.nw[v][i] = it.second[i];
 					}
+
+				//for (auto& k : it.second) {
+				//	task.nw[v][k.first] = k.second;
+				//}
 			}
-
-
-			for (auto& doc : update.nwsumDiff) {
+			for (auto& doc : taskUpdate.nwsumDiff) {
 				task.nwsum[doc.first] = doc.second;
 			}
 		}
 		iteration_i++;
 		if (config.processID == ROOT) {
 			cout << "Iteration " << iteration_i;
-			double t2 = timer.elapsed();
+			double t2 = t.elapsed();
 			cout << ", elapsed" << t2 << "" << endl;
 		}
 	}
@@ -175,6 +203,8 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 {
 
 	SlaveSyncData syncData;
+	syncData.pid = config.processID;
+	syncData.task_id = task.id;
 
 	double alpha = task.alpha;
 	double beta = task.beta;
@@ -184,6 +214,8 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 
 
 	for (int wi = 0; wi < task.wordSampling.size(); wi++) {
+
+		//timer.reset(); //reset at each word
 
 		/*
 			TODO: has to test which is better
@@ -201,29 +233,47 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 		int n = tempWord.at(2);
 		//z[m][n] 
 		int topic = task.z.at(wi);
-
+		//rtime("1"); timer.reset();
 		//local copy of task
 		//task.nw[w][topic] -= 1;
 		//task.nd[m][topic] -= 1;
 		//task.nwsum[topic] -= 1;
 		//task.ndsum[m] -= 1;
-
+		if (syncData.nwDiff[w].size() == 0) {
+			syncData.nwDiff[w] = vector<int>(K, 0);
+		}
+		if (syncData.ndDiff[m].size() == 0) {
+			syncData.ndDiff[m] = vector<int>(K, 0);
+		}
 
 		//changes to be sychronized
 		syncData.nwDiff[w][topic] -= 1;
 		syncData.ndDiff[m][topic] -= 1;
 		syncData.nwsumDiff[topic] -= 1;
-
+		//rtime("2"); timer.reset();
 		double* p = new double[K];
+
+		vector<int>& nw = task.nw.at(w);
+		vector<int>& nwsum = task.nwsum;
+		vector<int>& nd = task.nd.at(m);
+		hashmap<int,int>& ndsum = task.ndsum;
+
+
 		for (int k = 0; k < K; k++) {
-			double A = task.nw.at(w).at(k) - 1;
-			double B = task.nwsum.at(k) - 1;
-			double C = task.nd.at(m).at(k) - 1;
-			double D = task.ndsum.at(m) - 1;
+			//timer.reset();
+			double A = nw.at(k) - 1;
+			//rtime("2.1"); timer.reset();
+			double B = nwsum.at(k) - 1;
+			//rtime("2.2"); timer.reset();
+			double C = nd.at(k) - 1;
+			//rtime("2.3"); timer.reset();
+			double D = ndsum.at(m) - 1;
+			//rtime("2.4"); timer.reset();
 			p[k] = (A + beta) / (B + Vbeta) *
 				(C + alpha) / (D + Kalpha);
+			//rtime("2.5"); timer.reset();
 		}
-
+		//rtime("3"); timer.reset();
 		// cumulate multinomial parameters
 		for (int k = 1; k < K; k++) {
 			p[k] += p[k - 1];
@@ -237,18 +287,20 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 			}
 		}
 		delete[] p;
-
+		//rtime("4"); timer.reset();
 		//task.nw[w][topic] += 1;
 		//task.nd[m][topic] += 1;
 		//task.nwsum[topic] += 1;
 		//task.ndsum[m] += 1;
 
 		syncData.nwDiff[w][topic] += 1;
+		//rtime("4.1"); timer.reset();
 		syncData.ndDiff[m][topic] += 1;
+		//rtime("4.2"); timer.reset();
 		syncData.nwsumDiff[topic] += 1;
-
+		//rtime("4.3"); timer.reset();
 		task.z[wi] = topic;
-
+		//rtime("5"); timer.reset();
 
 	}
 	return syncData;

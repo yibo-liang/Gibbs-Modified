@@ -7,8 +7,11 @@
 class SlaveSyncData
 {
 public:
-	hashmap<int, hashmap<int,int>> ndDiff; //nd difference, stored in map, maximum size = M * K, will be smaller over the iterations
-	hashmap<int, hashmap<int,int>> nwDiff; //nw difference, maximum size = V * K, will be smaller as well
+	int pid;
+	int task_id;
+
+	hashmap<int, vector<int>> ndDiff; //nd difference, stored in map, maximum size = M * K, will be smaller over the iterations
+	hashmap<int, vector<int>> nwDiff; //nw difference, maximum size = V * K, will be smaller as well
 	hashmap<int, int> nwsumDiff;//nwsum difference, 
 
 	SlaveSyncData(const SlaveSyncData& d);
@@ -20,6 +23,8 @@ private:
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)
 	{
+		ar & pid;
+		ar & task_id;
 		ar & BOOST_SERIALIZATION_NVP(ndDiff);
 		ar & BOOST_SERIALIZATION_NVP(nwDiff);
 		ar & BOOST_SERIALIZATION_NVP(nwsumDiff);
