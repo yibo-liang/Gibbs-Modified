@@ -1,21 +1,21 @@
-#include "job.h"
+#include "task_generator.h"
 #include "task_executor.h"
 #include "mpi_helper.h"
 #include <random>
 
-Job::Job(JobConfig &config)
+TaskGenerator::TaskGenerator(JobConfig &config)
 {
 	this->config = config;
 }
 
-Job::~Job()
+TaskGenerator::~TaskGenerator()
 {
 }
 
 
 
 
-void Job::startMasterJob(
+void TaskGenerator::startMasterJob(
 	TaskExecutor &executor)
 {
 
@@ -68,7 +68,7 @@ int RandInteger(int min, int max)
 	return num;
 }
 
-Model Job::createInitialModel()
+Model TaskGenerator::createInitialModel()
 {
 	Model model;
 	//initial values
@@ -107,14 +107,14 @@ Model Job::createInitialModel()
 	return model;
 }
 
-void Job::loadCorpus()
+void TaskGenerator::loadCorpus()
 {
 	if (config.filetype == "txt") {
 		corpus.fromTextFile(config.filename, 4, map<int, string>());
 	}
 }
 
-vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
+vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 {
 	//cout << "generateSimpleTasks 117" << endl;
 	int taskNumber = config.totalProcessCount * config.taskPerProcess;
@@ -145,14 +145,14 @@ vector<vector<Task>> Job::generateSimpleTasks(Model &initial_model)
 			Document& doc = corpus.documents.at(doc_i);
 			//cout << "generateSimpleTasks 140, doc_i=" << doc_i<< endl;
 			//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
-			for (int docWord_i = 0; docWord_i < doc.wordCount(); docWord_i++) {
+			for (int wordIndexInDoc = 0; wordIndexInDoc < doc.wordCount(); wordIndexInDoc++) {
 
 
-				int w = doc.words.at(docWord_i);
+				int w = doc.words.at(wordIndexInDoc);
 				tasksForSingleExecutor[taskNumber_i]
 					.wordSampling
-					.push_back(vector<int>({ doc_i, w, docWord_i }));
-				int k = initial_model.z[doc_i][docWord_i]; //k, topic assignment of the word in doc
+					.push_back(vector<int>({ doc_i, w, wordIndexInDoc }));
+				int k = initial_model.z[doc_i][wordIndexInDoc]; //k, topic assignment of the word in doc
 				tasksForSingleExecutor[taskNumber_i].z.push_back(k);
 				tasksForSingleExecutor[taskNumber_i].vocabulary[w] = true;
 				tasksForSingleExecutor[taskNumber_i].docCollection[doc_i] = true;

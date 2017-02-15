@@ -11,13 +11,13 @@
 #include "task_executor.h"
 #include "model.h"
 
-class Job
+class TaskGenerator
 {
 public:
 
 
-	Job(JobConfig &config);
-	~Job();
+	TaskGenerator(JobConfig &config);
+	~TaskGenerator();
 
 	void startMasterJob(TaskExecutor &executor);
 	

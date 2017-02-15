@@ -24,9 +24,6 @@
     <ClCompile Include="model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="job.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="document.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -42,6 +39,12 @@
     <ClCompile Include="slave_sync_data.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="task_generator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sampler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="document.h">
@@ -54,9 +57,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="task.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="job.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="shared_header.h">
@@ -78,6 +78,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="task_generator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -21,7 +21,7 @@ namespace MPIHelper {
 	/* OOP send function for mpi, send object type N to process n*/
 	/* Send and Receive implementation is trivial using boost turning object into char stream, then sent through*/
 	template<typename N>
-	int mpiSend(N & obj, int receiverProc_n) {
+	int mpiSend(const N & obj, int receiverProc_n) {
 
 		std::string serialString;
 		boost::iostreams::back_insert_device<std::string> inserter(serialString);

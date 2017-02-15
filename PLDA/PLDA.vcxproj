@@ -136,7 +136,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <Optimization>Full</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -158,7 +158,8 @@
   <ItemGroup>
     <ClCompile Include="corpus.cpp" />
     <ClCompile Include="document.cpp" />
-    <ClCompile Include="job.cpp" />
+    <ClCompile Include="sampler.cpp" />
+    <ClCompile Include="task_generator.cpp" />
     <ClCompile Include="job_config.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
@@ -169,7 +170,8 @@
   <ItemGroup>
     <ClInclude Include="corpus.h" />
     <ClInclude Include="document.h" />
-    <ClInclude Include="job.h" />
+    <ClInclude Include="sampler.h" />
+    <ClInclude Include="task_generator.h" />
     <ClInclude Include="job_config.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="model.h" />

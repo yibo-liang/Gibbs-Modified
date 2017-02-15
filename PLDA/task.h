@@ -29,7 +29,7 @@ public:
 	vector<int> z; //the topic assignment of word word_id in document doc_id, z should have same length as wordSampling 
 	//index is the number where this word appear in the 
 
-	hashmap<int, bool> vocabulary;
+	map<int, bool> vocabulary;
 	hashmap<int, bool> docCollection;
 	
 
@@ -39,7 +39,7 @@ public:
 	hashmap<int, vector<int>> nd; //partial nd
 	hashmap<int, vector<int>> nw; //partial nw
 	vector<int> nwsum;
-	hashmap<int, int> ndsum;
+	map<int, int> ndsum;
 
 
 	/*
@@ -91,6 +91,7 @@ private:
 		ar & beta;
 		ar & K;
 		ar & V;
+		ar & BOOST_SERIALIZATION_NVP(vocabulary);
 		ar & BOOST_SERIALIZATION_NVP(wordSampling);
 		ar & BOOST_SERIALIZATION_NVP(z);
 		ar & BOOST_SERIALIZATION_NVP(nd);

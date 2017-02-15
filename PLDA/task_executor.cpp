@@ -2,6 +2,7 @@
 #include "mpi_helper.h"
 #include <random>
 
+#define WAIT_FOR_ATTACH false
 //the core method for Gibbs' LDA sampling.
 /*
 
@@ -22,39 +23,59 @@ If Slave:
 		broatcast new nd, nw, nwsum
 */
 
-void TaskExecutor::receiveMasterTasks(vector<Task> tasks, Model * model)
+void TaskExecutor::receiveMasterTasks(vector<Task> & tasks, Model * model)
 {
 	//used only by ROOT
-	this->tasks = tasks;
+	this->samplers = vector<Sampler>(tasks.size());
+	for (auto &task : tasks) {
+		this->samplers[task.id].fromTask(task);
+		this->samplers[task.id].pid = config.processID;
+	}
+
+
 	this->model = model;
-	cout << "Proc ID = " << this->procNumber << " Received " << this->tasks.size() << " tasks" << endl;
+	cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
 }
 
 void TaskExecutor::receiveRemoteTasks()
 {
+
 	using namespace MPIHelper;
-	mpiReceive2(this->tasks, ROOT);
-	cout << "Proc ID = " << this->procNumber << " Received " << this->tasks.size() << " tasks" << endl;
+	vector<Task> tasks;
+	mpiReceive2(tasks, ROOT);
+
+	this->samplers = vector<Sampler>(tasks.size());
+
+	for (auto &task : tasks) {
+
+		this->samplers[task.id].fromTask(task);
+		this->samplers[task.id].pid = config.processID;
+	}
+
+	cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
 }
 
 
 
-vector<vector<SlaveSyncData>> updateModel(Model & model, vector<vector<SlaveSyncData>> & iterationSyncCollector, JobConfig config) {
+vector<vector<SlaveSyncData>> updateModel(Model & model, const vector<vector<SlaveSyncData>> &iterationSyncCollector, JobConfig& config) {
 
 
 	vector<vector<SlaveSyncData>> resultArray(config.totalProcessCount, vector<SlaveSyncData>(config.taskPerProcess, SlaveSyncData()));
 
 	for (int collection_id = 0; collection_id < iterationSyncCollector.size(); collection_id++) {
 		for (int task_iter_id = 0; task_iter_id < iterationSyncCollector[collection_id].size(); task_iter_id++) {
-			SlaveSyncData old_sync_data = iterationSyncCollector[collection_id][task_iter_id];
+			const SlaveSyncData& old_sync_data = iterationSyncCollector.at(collection_id).at(task_iter_id);
 			int pid = old_sync_data.pid;
 			int task_id = old_sync_data.task_id;
-			SlaveSyncData new_sync_data = resultArray[pid][task_id];
+
+			SlaveSyncData& new_sync_data = resultArray[pid][task_id];
+			new_sync_data.pid = pid;
+			new_sync_data.task_id = task_id;
 			//nd diff
 			for (auto &ndIterator : old_sync_data.ndDiff) {
 				int m = ndIterator.first;
 				for (int i = 0; i < model.K; i++) {
-					model.nd[m][i] += ndIterator.second[i];
+					model.nd[m][i] += ndIterator.second.at(i);
 
 					if (new_sync_data.ndDiff[m].size() == 0) {
 						new_sync_data.ndDiff[m] = vector<int>(model.K);
@@ -67,7 +88,7 @@ vector<vector<SlaveSyncData>> updateModel(Model & model, vector<vector<SlaveSync
 			for (auto &nwIterator : old_sync_data.nwDiff) {
 				int w = nwIterator.first;
 				for (int i = 0; i < model.K; i++) {
-					model.nw[w][i] += nwIterator.second[i];
+					model.nw[w][i] += nwIterator.second.at(i);
 
 					if (new_sync_data.nwDiff[w].size() == 0) {
 						new_sync_data.nwDiff[w] = vector<int>(model.K);
@@ -93,27 +114,29 @@ vector<vector<SlaveSyncData>> updateModel(Model & model, vector<vector<SlaveSync
 
 void TaskExecutor::execute()
 {
-	Timer t;
 	using namespace MPIHelper;
+	if (WAIT_FOR_ATTACH && config.processID == ROOT)
+		cin.ignore();
+	Timer t;
 	int iteration_i = 0;
 	while (iteration_i < config.iterationNumber) {
 
 		if (config.processID == ROOT) {
+
 			t.reset();
 		}
 
 		vector<SlaveSyncData> executorSyncCollector;
 
-		
-		for (auto &task : tasks) {
-			executorSyncCollector.push_back(sampleTask(task));
+
+		for (auto &sampler : samplers) {
+			executorSyncCollector.push_back(sampler.sample());
 
 		}
 		//debug
 		for (auto &str_t : timeRecord) {
 			cout << str_t.first << ": " << str_t.second << endl;
 		}
-		vector<SlaveSyncData> update;
 
 		if (config.processID == MPIHelper::ROOT) {
 			vector<vector<SlaveSyncData>> iterationSyncCollector(config.totalProcessCount);
@@ -124,8 +147,10 @@ void TaskExecutor::execute()
 				if (i != ROOT) {
 					//iterationSyncCollector.push_back(mpiReceive<vector<SynchronisationData>>(i));
 					mpiReceive2<vector<SlaveSyncData>>(iterationSyncCollector[i], i);
+					
 				}
 			}
+
 			//iterate all syn data, sum all changes and broadcast to all workers
 			vector<vector<SlaveSyncData>>  updateCollection = updateModel(*model, iterationSyncCollector, config);
 
@@ -134,51 +159,31 @@ void TaskExecutor::execute()
 					mpiSend(updateCollection[pi], pi);
 			}
 
-			update = updateCollection[ROOT];
+			//update
+			vector<SlaveSyncData>& update = updateCollection[ROOT];
+			for (auto& updateData : update) {
+				int task_id = updateData.task_id;
+				samplers[task_id].update(updateData);
+			}
+
 			//mpiBroadCast(update, ROOT, config.processID);
 		}
 		else {
 			//send slave sync data
 			mpiSend(executorSyncCollector, ROOT);
 
-			//receive master's update by broadcasting
-			
+			//update
+			vector<SlaveSyncData> update;
 			mpiReceive2(update, ROOT);
-
+			for (auto& updateData : update) {
+				int task_id = updateData.task_id;
+				samplers[task_id].update(updateData);
+			}
 		}
 
 		//update tasks for this 
-		for (auto& task : tasks) {
-			//task.nd = globalSyncData.ndDiff;
-			//task.nw = globalSyncData.nwDiff;
-			int task_id = task.id;
-			SlaveSyncData taskUpdate = update[task.id];
-			for (auto& it : taskUpdate.ndDiff) {
-				int m = it.first;
-				if (task.nd.count(m))
-					for (int i = 0; i < it.second.size(); i++) {
-						task.nd[m][i] = it.second[i];
-					}
 
-				//for (auto& k : it.second) {
-				//	task.nd[m][k.first] = k.second;
-				//}
-			}
-			for (auto& it : taskUpdate.nwDiff) {
-				int v = it.first;
-				if (task.nw.count(v))
-					for (int i = 0; i < it.second.size(); i++) {
-						task.nw[v][i] = it.second[i];
-					}
 
-				//for (auto& k : it.second) {
-				//	task.nw[v][k.first] = k.second;
-				//}
-			}
-			for (auto& doc : taskUpdate.nwsumDiff) {
-				task.nwsum[doc.first] = doc.second;
-			}
-		}
 		iteration_i++;
 		if (config.processID == ROOT) {
 			cout << "Iteration " << iteration_i;
@@ -256,7 +261,7 @@ SlaveSyncData TaskExecutor::sampleTask(Task & task)
 		vector<int>& nw = task.nw.at(w);
 		vector<int>& nwsum = task.nwsum;
 		vector<int>& nd = task.nd.at(m);
-		hashmap<int,int>& ndsum = task.ndsum;
+		map<int, int>& ndsum = task.ndsum;
 
 
 		for (int k = 0; k < K; k++) {

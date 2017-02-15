@@ -1,7 +1,7 @@
 
 #include "shared_header.h"
 #include "job_config.h"
-#include "job.h"
+#include "task_generator.h"
 #include "task_executor.h"
 #include <mpi.h>
 
@@ -76,21 +76,23 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 }
 
 int master(JobConfig &config) {
-	Job lda_job(config);
+	TaskGenerator lda_job(config);
 	TaskExecutor executor(config);
 	lda_job.startMasterJob(executor);
 	executor.execute();
 	cout << "All Job Done.";
-	cin.ignore();
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 }
 
 int slave(JobConfig config) {
-
+	cout << config.processID << "," << 1 << endl; 
 	TaskExecutor executor(config);
+	cout << config.processID << "," << 2 << endl;
 	executor.receiveRemoteTasks();
+	cout << config.processID << "," << 3 << endl;
 	executor.execute();
+	cout << config.processID << "," << 4 << endl;
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 }
@@ -109,7 +111,7 @@ int main(int argc, char *argv[]) {
 	JobConfig config;
 	config.processID = worldRank;
 	config.totalProcessCount = worldSize;
-	
+
 	if (getProgramOption(argc, argv, &config) != 0) return 1;
 
 	if (worldRank == 0) {
