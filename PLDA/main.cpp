@@ -14,7 +14,6 @@ namespace po = boost::program_options;
 
 int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	po::options_description desc("Allowed options");
-	int niter = 2000;
 	int n = 0;
 	double alpha = 0.01;
 	double beta = 0.01;
@@ -24,7 +23,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("help,?", "produce help message")
 		("file,f", po::value<string>(), "set corpus filename")
 		("filetype,ft", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv]")
-		("iter-number,itern", po::value<int>(&niter)->default_value(2000), "set iteration number")
+		("niter", po::value<int>(), "set iteration number")
 		("docn,dn", po::value<int>(&n), "set document number")
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
@@ -50,8 +49,8 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	if (vm.count("filetype")) {
 		config->filetype = vm["filetype"].as<string>();
 	}
-	if (vm.count("iter-number")) {
-		config->iterationNumber = vm["iter-number"].as<int>();
+	if (vm.count("niter")) {
+		config->iterationNumber = vm["niter"].as<int>();
 	}
 	if (vm.count("docn")) {
 		config->documentNumber = vm["docn"].as<int>();
@@ -81,6 +80,7 @@ int master(JobConfig &config) {
 	TaskGenerator lda_job(config);
 	TaskExecutor executor(config);
 	lda_job.startMasterJob(executor);
+	executor.model->corpus = &lda_job.corpus;
 	executor.execute2();
 	cout << "All Job Done.";
 	string result = executor.model->getTopicWords(25);

@@ -11,8 +11,8 @@ class Corpus
 public:
 	
 	vector<Document> documents;
-	map<string, int> wordToIndex;
-	map<int, string> indexToWord;
+	hashmap<string, int> wordToIndex;
+	hashmap<int, string> indexToWord;
 
 	int totalWordCount = 0;
 

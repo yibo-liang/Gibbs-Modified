@@ -22,7 +22,7 @@ string Model::getTopicWords(int n)
 		std::sort(topic_word_distrib.begin(), topic_word_distrib.end(), [](pair<string, double> const& a, pair<string, double> const& b) {return a.second > b.second; });
 		ss << "Topic " << i << " ";
 		for (int j = 0; j < n; j++) {
-			ss << topic_word_distrib[j].first <<", ";
+			ss << topic_word_distrib[j].first<<"("<< topic_word_distrib[j].second <<"), ";
 		}
 		ss << endl;
 	}

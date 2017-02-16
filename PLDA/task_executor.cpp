@@ -112,14 +112,24 @@ vector<vector<SlaveSyncData>> updateModel(Model & model, const vector<vector<Sla
 	return resultArray;
 }
 
+using namespace fastVector2D;
+inline void importND(Model * model, vecFast2D<int> nd, int partialM, int offset) {
+	cout << "import nd offset=" << offset << ", partialM=" << partialM;
+	int K = model->K;
+	for (int m = 0; m < partialM; m++) {
+		for (int k = 0; k < K; k++) {
+			int rm = m + offset;
+			model->nd[rm][k] = readvec2D<int>(nd, m, k, K);
+		}
+	}
+}
 
 void TaskExecutor::execute2()
 {
 	using namespace MPIHelper;
-	using namespace fastVector2D;
 
 	int ** nwCollection;
-	int totalTask = config.processID * config.taskPerProcess;
+	int totalTask = config.totalProcessCount * config.taskPerProcess;
 	if (config.processID == ROOT) {
 		size_t s = model->V*model->K;
 		nwCollection = new int *[totalTask];
@@ -140,6 +150,7 @@ void TaskExecutor::execute2()
 			sampler.sample2();
 			//after sampling each task, send nw to sync, master only need pointer
 			if (config.processID == ROOT) {
+				cout << "nw coll i=" << i << " gets new nw" << endl;
 				nwCollection[i] = sampler.nw;
 				++i;
 			}
@@ -163,7 +174,7 @@ void TaskExecutor::execute2()
 				if (j != config.processID) {
 
 					MPI_Recv(nwCollection[i], s, MPI_INT, j, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					
+					++i;
 				}
 			}
 			// sync model with all sampler's data, using n[w,k] <- n[w,k] + sum (n[p][w,k] - n[w|k])
@@ -220,15 +231,16 @@ void TaskExecutor::execute2()
 				int task_id = info[0];
 				int partialM = info[1];
 				int documentOffset = info[2];
-				int *tmp = new int[partialM];
+				vecFast2D<int> tmp = newVec2D<int>(partialM, model->K);
 				MPI_Recv(tmp, partialM * model->K, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //SEND nd
-				
+				importND(model, tmp, partialM, documentOffset);
+				free(tmp);
 			}
 		}
 		//root self
 		for (auto& sampler : samplers) {
 			int offset = sampler.documentOffset;
-			memcpy(&model->nd[offset], sampler.nw, sampler.partialM);
+			importND(model, sampler.nw, sampler.partialM, sampler.documentOffset);
 		}
 
 	}

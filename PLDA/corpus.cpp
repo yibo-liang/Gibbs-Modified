@@ -15,13 +15,13 @@ void Corpus::fromTextFile(string filename, int docn, int textIdxStart, map<int, 
 	std::ifstream file(filename);
 	std::string str;
 
-
+	cout << "Open file: " << filename << endl;
 	while (std::getline(file, str))
 	{
 		if (str.length() < 1) {
 			continue;
 		}
-		if (documents.size() >= docn) break;
+		if (docn>0 && documents.size() >= docn) break;
 		
 		istringstream iss(str);
 		vector<string> tokens{ istream_iterator<string>{iss},
