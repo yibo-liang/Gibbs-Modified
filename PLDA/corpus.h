@@ -16,9 +16,9 @@ public:
 
 	int totalWordCount = 0;
 
-	void fromTextFile(string filename, int textIdxStart, map<int, string> otherAttrsIdx);
-	void fromJSONFile(string filename, string textKey, vector<string> otherAttrs);
-	void fronCSVFILE(string filename, string textKey, vector<string> otherAttrs);//TODO
+	void fromTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx);
+	void fromJSONFile(string filename, int docn, string textKey, vector<string> otherAttrs);
+	void fronCSVFILE(string filename, int docn, string textKey, vector<string> otherAttrs);//TODO
 	
 	Corpus();
 	~Corpus();

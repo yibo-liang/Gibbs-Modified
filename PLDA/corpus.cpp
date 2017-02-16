@@ -9,17 +9,20 @@ Corpus::~Corpus()
 {
 }
 
-void Corpus::fromTextFile(string filename, int textIdxStart, map<int, string> otherAttrsIdx)
+void Corpus::fromTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx)
 {
 	using namespace std;
 	std::ifstream file(filename);
 	std::string str;
+
 
 	while (std::getline(file, str))
 	{
 		if (str.length() < 1) {
 			continue;
 		}
+		if (documents.size() >= docn) break;
+		
 		istringstream iss(str);
 		vector<string> tokens{ istream_iterator<string>{iss},
 			istream_iterator<string>{}};

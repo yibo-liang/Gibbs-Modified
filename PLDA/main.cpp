@@ -4,7 +4,8 @@
 #include "task_generator.h"
 #include "task_executor.h"
 #include <mpi.h>
-
+#include <iostream>
+#include <fstream>
 /*
 Main file : controlls the load, running mode and exit of the program
 */
@@ -17,7 +18,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	int n = 0;
 	double alpha = 0.01;
 	double beta = 0.01;
-
+	int task_proc = 1;
 
 	desc.add_options()
 		("help,?", "produce help message")
@@ -28,7 +29,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
 		("hierarch,h", po::value<std::vector<int> >()->multitoken(), "set hierarchical structure in form (ignore brackets) [n1 n2 n3 ...], if unset, it will be a single topic model")
-		("task-per-proc,tpp", po::value<int>(&n), "set task number per process")
+		("task-per-proc,tpp", po::value<int>(), "set task number per process")
 		;
 
 	po::variables_map vm;
@@ -76,12 +77,19 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 }
 
 int master(JobConfig &config) {
+	using namespace std;
 	TaskGenerator lda_job(config);
 	TaskExecutor executor(config);
 	lda_job.startMasterJob(executor);
 	executor.execute();
 	cout << "All Job Done.";
+	string result = executor.model->getTopicWords(25);
+	ofstream myfile;
+	myfile.open("result.txt");
+	myfile << result;
+	myfile.close();
 	MPI_Barrier(MPI_COMM_WORLD);
+
 	return 0;
 }
 
@@ -112,9 +120,9 @@ int main(int argc, char *argv[]) {
 	config.processID = worldRank;
 	config.totalProcessCount = worldSize;
 
-	if (getProgramOption(argc, argv, &config) != 0) return 1;
-
 	if (worldRank == 0) {
+		if (getProgramOption(argc, argv, &config) != 0) return 1;
+
 		//std::cin.ignore();
 		master(config);
 	}

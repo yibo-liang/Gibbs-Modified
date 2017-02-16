@@ -15,6 +15,7 @@ class TaskGenerator
 {
 public:
 
+	Corpus corpus;
 
 	TaskGenerator(JobConfig &config);
 	~TaskGenerator();
@@ -24,7 +25,6 @@ public:
 
 private:
 
-	Corpus corpus;
 	JobConfig config;
 
 	Model model;

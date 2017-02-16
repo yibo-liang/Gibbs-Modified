@@ -73,7 +73,7 @@ Model TaskGenerator::createInitialModel()
 	Model model;
 	//initial values
 	model.K = config.hierarchStructure[0];
-	model.M = corpus.documents.size();
+	model.M = config.documentNumber;
 	model.V = corpus.indexToWord.size();
 	model.alpha = config.alpha;
 	model.beta = config.beta;
@@ -93,7 +93,7 @@ Model TaskGenerator::createInitialModel()
 
 		for (int i = 0; i < model.z[m].size(); i++) {
 			//random topic
-			int topic = RandInteger(0, model.K-1);
+			int topic = RandInteger(0, model.K - 1);
 			int w = doc.words[i];
 
 			model.z[m][i] = topic;
@@ -103,14 +103,14 @@ Model TaskGenerator::createInitialModel()
 
 		}
 	}
-
+	model.corpus = &corpus;
 	return model;
 }
 
 void TaskGenerator::loadCorpus()
 {
 	if (config.filetype == "txt") {
-		corpus.fromTextFile(config.filename, 4, map<int, string>());
+		corpus.fromTextFile(config.filename, config.documentNumber, 4, map<int, string>());
 	}
 }
 
@@ -130,7 +130,7 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 	//cout << "generateSimpleTasks 126, total p=" << config.totalProcessCount << endl;
 	vector<vector<Task>> result = vector<vector<Task>>(config.totalProcessCount, vector<Task>(config.taskPerProcess, sampleTask));
 	auto& tasksForSingleExecutor = result[0];
-	
+
 
 	if (config.parallelType == P_MPI) {
 		int groupSize = corpus.totalWordCount / (taskNumber)+1;
@@ -141,7 +141,7 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 		int taskNumber_i = 0;
 		int wordIterator = 0; //word index iterator of the whole corpus, that is, the total set of word instances of all documents
 		//cout << "generateSimpleTasks 138, gsize=" << groupSize << endl;
-		for (int doc_i = 0; doc_i < corpus.documents.size(); doc_i++) {
+		for (int doc_i = 0; doc_i < model.M; doc_i++) {
 			Document& doc = corpus.documents.at(doc_i);
 			//cout << "generateSimpleTasks 140, doc_i=" << doc_i<< endl;
 			//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
@@ -160,37 +160,35 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 				//cout << "generateSimpleTasks 153, word_i="<< docWord_i << endl;
 				//next word
 				wordIterator++;
-				if (wordIterator % groupSize == 0) {
+			}
 
-					//before going to next task, add neccessary nd nw segment 
+			if (wordIterator >= groupSize*(taskNumber_i + 1)) {
 
+				//before going to next task, add neccessary nd nw segment 
 
+				taskNumber_i++;
+				//next task 
+				if (taskNumber_i % config.taskPerProcess == 0) {
+					processNumber_i++;
+					taskNumber_i = 0;
+					tasksForSingleExecutor = result[processNumber_i];
+					//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
 
-					taskNumber_i++;
-					//next task 
-					if (taskNumber_i % config.taskPerProcess == 0 ) {
-						processNumber_i++;
-						taskNumber_i = 0;
-						tasksForSingleExecutor = result[processNumber_i];
-						//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
-
-					}
-
-					//cout << "Cur tn=" << taskNumber_i << endl;
 				}
-				
+
+				//cout << "Cur tn=" << taskNumber_i << endl;
 			}
 		}
 
 	}
-	for (int pid = 0; pid < result.size();pid++) {
+	for (int pid = 0; pid < result.size(); pid++) {
 		auto & vec = result[pid];
-		for (int task_id = 0; task_id < vec.size();task_id++) {
+		for (int task_id = 0; task_id < vec.size(); task_id++) {
 			auto & task = vec[task_id];
 			task.id = task_id;
 			for (auto &it : task.vocabulary) {
 				task.nw[it.first] = initial_model.nw[it.first];
-				
+
 			}
 
 			for (auto &it : task.docCollection) {
@@ -198,7 +196,7 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 				task.ndsum[it.first] = initial_model.ndsum[it.first];
 			}
 
-			
+
 		}
 	}
 
