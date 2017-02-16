@@ -123,8 +123,10 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 	Task sampleTask;
 	sampleTask.K = model.K;
 	sampleTask.V = model.V;
+
 	sampleTask.alpha = initial_model.alpha;
 	sampleTask.beta = initial_model.beta;
+	sampleTask.nw = initial_model.nw;
 	sampleTask.nwsum = initial_model.nwsum;
 
 	//cout << "generateSimpleTasks 126, total p=" << config.totalProcessCount << endl;
@@ -154,7 +156,7 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 					.push_back(vector<int>({ doc_i, w, wordIndexInDoc }));
 				int k = initial_model.z[doc_i][wordIndexInDoc]; //k, topic assignment of the word in doc
 				tasksForSingleExecutor[taskNumber_i].z.push_back(k);
-				tasksForSingleExecutor[taskNumber_i].vocabulary[w] = true;
+				//tasksForSingleExecutor[taskNumber_i].vocabulary[w] = true;
 				tasksForSingleExecutor[taskNumber_i].docCollection[doc_i] = true;
 
 				//cout << "generateSimpleTasks 153, word_i="<< docWord_i << endl;
@@ -186,10 +188,13 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 		for (int task_id = 0; task_id < vec.size(); task_id++) {
 			auto & task = vec[task_id];
 			task.id = task_id;
+
+
+			/*
 			for (auto &it : task.vocabulary) {
 				task.nw[it.first] = initial_model.nw[it.first];
-
 			}
+			*/
 
 			for (auto &it : task.docCollection) {
 				task.nd[it.first] = initial_model.nd[it.first];

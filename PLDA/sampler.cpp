@@ -2,11 +2,7 @@
 
 inline void Sampler::clearSyncBuffer()
 {
-	fill2D(ndDiff, 0, partialM, K);
-	fill2D(nwDiff, 0, partialV, K);
-	std::fill(nwsumDiff.begin(), nwsumDiff.end(), 0);
-	std::fill(Mchange.begin(), Mchange.end(), false);
-	std::fill(Vchange.begin(), Vchange.end(), false);
+
 }
 
 inline int Sampler::mapM(int m)
@@ -14,13 +10,11 @@ inline int Sampler::mapM(int m)
 	return documentOffset + m;
 }
 
-inline int Sampler::mapV(int v)
+void Sampler::sample2()
 {
-	return vocabOffsetMap[v];
-}
+	//Sampling using AD-LDA algorithm for one iteration
+	//asume that task are partitioned into different document groups, no 2 task have a same document to sample
 
-SlaveSyncData Sampler::sample()
-{
 	/* ------------- initialising sync buffer ------------  */
 	clearSyncBuffer();
 	/* ------------- Sample start ------------  */
@@ -35,25 +29,20 @@ SlaveSyncData Sampler::sample()
 
 		int topic = z.at(wi);
 
-		//sync buffer
-		plusIn2D(nwDiff, -1, w, topic, K);
-		plusIn2D(ndDiff, -1, m, topic, K);
-		nwsumDiff[topic] -= 1;
 
 		//local partial model
 		plusIn2D(nw, -1, w, topic, K);
 		plusIn2D(nd, -1, m, topic, K);
-		nwsum[topic] -= 1;
+		int _nwsum = --nwsum[topic];
 		//ndsum[m] -= 1; // no need for changing the value, only need ref of ndsum-1
 
 		Mchange[m] = true;
-		Vchange[w] = true;
 
 		for (int k = 0; k < K; k++) {
 			double A = readvec2D(nw, w, k, K);
-			double B = nwsum.at(k);
+			double B = _nwsum;
 			double C = readvec2D(nd, m, k, K);
-			double D = ndsum.at(m) - 1;
+			double D = 1;
 			p[k] = (A + beta) / (B + Vbeta) *
 				(C + alpha) / (D + Kalpha);
 		}
@@ -75,66 +64,8 @@ SlaveSyncData Sampler::sample()
 		nwsum[topic] += 1;
 		//ndsum[m] += 1;
 
-		//sync buffer
-		plusIn2D(nwDiff, 1, w, topic, K);
-		plusIn2D(ndDiff, 1, m, topic, K);
-		nwsumDiff[topic] += 1;
 
 	}
-
-	//generate sync data
-	SlaveSyncData result;
-	result.pid = pid;
-	result.task_id = task_id;
-	for (int i = 0; i < Mchange.size(); i++) {
-		if (Mchange[i]) {
-			int m = mapM(i);
-			result.ndDiff[m] = vector<int>(K);
-			for (int k = 0; k < K; k++) {
-				result.ndDiff[m][k] = readvec2D(ndDiff, i, k, K);
-			}
-		}
-	}
-	for (int i = 0; i < Vchange.size(); i++) {
-		if (Vchange[i]) {
-			int v = mapV(i);
-			result.nwDiff[v] = vector<int>(K);
-			for (int k = 0; k < K; k++) {
-				result.nwDiff[v][k] = readvec2D(nwDiff, i, k, K);
-			}
-		}
-	}
-	for (int i = 0; i < K; i++) {
-		result.nwsumDiff[i] = nwsumDiff[i];
-	}
-	return result;
-}
-
-void Sampler::update(SlaveSyncData & syncData)
-{
-	for (auto&it : syncData.ndDiff) {
-		int global_m = it.first;
-		if (docMap.count(global_m)) {
-			int m = docMap.at(global_m);
-			for (int i = 0; i < it.second.size(); i++) {
-				writevec2D(it.second[i], nd, m, i, K);
-			}
-		}
-	}
-
-	for (auto&it : syncData.nwDiff) {
-		int global_v = it.first;
-		if (vocabMap.count(global_v)) {
-			int v = vocabMap.at(global_v);
-			for (int i = 0; i < it.second.size(); i++) {
-				writevec2D(it.second[i], nw, v, i, K);
-			}
-		}
-	}
-	for (auto &doc : syncData.nwsumDiff) {
-		nwsum[doc.first] = doc.second;
-	}
-
 
 
 }
@@ -168,13 +99,13 @@ void Sampler::fromTask(const Task& task)
 	this->ndsum = vector<int>(task.ndsum.size(), K);
 
 	// store vocabulary offset
-	this->vocabOffsetMap = vector<int>(task.vocabulary.size());
+	//this->vocabOffsetMap = vector<int>(task.vocabulary.size());
 
-	int i = 0;
-	for (auto& it : task.vocabulary) {
-		vocabOffsetMap[i] = it.first;
-		i++;
-	}
+	//int i = 0;
+	//for (auto& it : task.vocabulary) {
+	//	vocabOffsetMap[i] = it.first;
+	//	i++;
+	//}
 
 	//nd & ndsum 
 	this->documentOffset = task.ndsum.begin()->first;
@@ -190,22 +121,12 @@ void Sampler::fromTask(const Task& task)
 	}
 
 	//nw & nwsum
-	Vchange = vector<bool>(partialV);
-	for (int v = 0; v < partialV; v++) {
-		int global_v = mapV(v);
-		vocabMap[global_v] = v;
-
-	
+	for (int v = 0; v < task.V; v++) {
 		for (int k = 0; k < K; k++) {
-			int tmp = task.nw.at(global_v).at(k);
+			int tmp = task.nw.at(v).at(k);
 			writevec2D<int>(tmp, nw, v, k, K);
 		}
 	}
-
-	//create sync buffer for sampling
-	this->ndDiff = newVec2D<int>(partialM, K);
-	this->nwDiff = newVec2D<int>(partialV, K);
-	this->nwsumDiff = vector<int>(K, 0);
 
 	//word instances 
 	this->wordSampling = newVec2D<int>(wordInsNum, 2);
@@ -213,7 +134,6 @@ void Sampler::fromTask(const Task& task)
 		int m = task.wordSampling.at(i).at(0);
 		m = m - documentOffset;
 		int w = task.wordSampling.at(i).at(1);
-		w = vocabMap.at(w);
 		int wordIndexInDoc = task.wordSampling.at(i).at(2);
 
 		writevec2D<int>(m, wordSampling, i, 0, 2);
@@ -241,8 +161,6 @@ Sampler::~Sampler()
 {
 	free(nd);
 	free(nw);
-	free(ndDiff);
-	free(nwDiff);
 	free(wordSampling);
 
 }

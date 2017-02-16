@@ -25,6 +25,7 @@ public:
 	void receiveMasterTasks(vector<Task> & tasks, Model * model); // master node task executor should use this, so no mpi is used for faster speed
 	void receiveRemoteTasks(); //all other proecess should use this
 
+	void execute2();
 	void execute();
 
 	TaskExecutor( JobConfig config);
@@ -46,7 +47,7 @@ private:
 	vector<Sampler> samplers;
 
 
-	SlaveSyncData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
+	//SlaveSyncData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
 	
 	
 

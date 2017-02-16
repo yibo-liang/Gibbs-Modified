@@ -1,5 +1,6 @@
 #include "task_executor.h"
 #include "mpi_helper.h"
+#include "shared_header.h"
 #include <random>
 
 #define WAIT_FOR_ATTACH false
@@ -112,6 +113,128 @@ vector<vector<SlaveSyncData>> updateModel(Model & model, const vector<vector<Sla
 }
 
 
+void TaskExecutor::execute2()
+{
+	using namespace MPIHelper;
+	using namespace fastVector2D;
+
+	int ** nwCollection;
+	int totalTask = config.processID * config.taskPerProcess;
+	if (config.processID == ROOT) {
+		size_t s = model->V*model->K;
+		nwCollection = new int *[totalTask];
+		for (int i = 0; i < totalTask; i++) {
+			nwCollection[i] = new int[s];
+		}
+	}
+
+	int iteration_i = 0;
+	Timer t;
+	while (iteration_i < config.iterationNumber) {
+		if (config.processID == ROOT) {
+			t.reset();
+		}
+
+		int i = 0;
+		for (auto &sampler : samplers) {
+			sampler.sample2();
+			//after sampling each task, send nw to sync, master only need pointer
+			if (config.processID == ROOT) {
+				nwCollection[i] = sampler.nw;
+				++i;
+			}
+		}
+
+		//after each sampler task is executed, collect all separate nw
+
+		if (config.processID != ROOT) {
+			for (auto &sampler : samplers) {
+				MPI_Send(sampler.nw, sampler.V*sampler.K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD);
+			};
+
+			for (auto& sampler : samplers) {
+				MPI_Bcast(sampler.nw, sampler.V*sampler.K, MPI_INT, ROOT, MPI_COMM_WORLD);
+				MPI_Bcast(&(sampler.nwsum[0]), sampler.K, MPI_INT, ROOT, MPI_COMM_WORLD);
+			}
+		}
+		else { //if root
+			size_t s = model->V*model->K;
+			for (int j = 0; j < config.totalProcessCount; j++) {
+				if (j != config.processID) {
+
+					MPI_Recv(nwCollection[i], s, MPI_INT, j, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+					
+				}
+			}
+			// sync model with all sampler's data, using n[w,k] <- n[w,k] + sum (n[p][w,k] - n[w|k])
+			// and also calculate new nwsum
+			int K = model->K;
+			vecFast2D<int> temp_nw = newVec2D<int>(model->V, K);
+			for (int k = 0; k < K; k++) {
+				int nwsum = 0;
+				for (int w = 0; w < model->V; w++) {
+					int sum = 0;
+					int old_nwk = model->nw[w][k];
+					for (int j = 0; j < totalTask; j++) {
+						vecFast2D<int> n = nwCollection[j];
+						sum += readvec2D(n, w, k, K) - old_nwk;
+					}
+					model->nw[w][k] += sum;
+					writevec2D<int>(model->nw[w][k], temp_nw, w, k, K);
+					nwsum += model->nw[w][k];
+				}
+				model->nwsum[k] = nwsum;
+			}
+			//send back nw nwsum
+			MPI_Bcast(temp_nw, s, MPI_INT, ROOT, MPI_COMM_WORLD);
+			MPI_Bcast(&(model->nwsum[0]), K, MPI_INT, ROOT, MPI_COMM_WORLD);
+			free(temp_nw);
+		}
+
+		iteration_i++;
+		if (config.processID == ROOT) {
+			cout << "Iteration " << iteration_i;
+			double t2 = t.elapsed();
+			cout << ", elapsed" << t2 << "" << endl;
+		}
+
+	}
+	//after all done, sync all model
+	if (config.processID != ROOT) {
+		int K = samplers[0].K;
+		for (auto& sampler : samplers) {
+			int s = sampler.partialM;
+			int info[3] = { sampler.task_id, s, sampler.documentOffset };
+			MPI_Send(&info, 3, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND partial document count = M 
+			MPI_Send(sampler.nd, s * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+
+		}
+	}
+	else {
+		//receive all sampler result from other process
+		
+		for (int i = 0; i < config.processID; i++) {
+			if (i != ROOT) {
+				int info[3];
+				MPI_Recv(&info, 3, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //SEND partial document count = M 
+				int task_id = info[0];
+				int partialM = info[1];
+				int documentOffset = info[2];
+				int *tmp = new int[partialM];
+				MPI_Recv(tmp, partialM * model->K, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //SEND nd
+				
+			}
+		}
+		//root self
+		for (auto& sampler : samplers) {
+			int offset = sampler.documentOffset;
+			memcpy(&model->nd[offset], sampler.nw, sampler.partialM);
+		}
+
+	}
+
+}
+
 void TaskExecutor::execute()
 {
 	using namespace MPIHelper;
@@ -130,7 +253,7 @@ void TaskExecutor::execute()
 
 
 		for (auto &sampler : samplers) {
-			executorSyncCollector.push_back(sampler.sample());
+			//executorSyncCollector.push_back(sampler.sample());
 
 		}
 		//debug
@@ -147,7 +270,7 @@ void TaskExecutor::execute()
 				if (i != ROOT) {
 					//iterationSyncCollector.push_back(mpiReceive<vector<SynchronisationData>>(i));
 					mpiReceive2<vector<SlaveSyncData>>(iterationSyncCollector[i], i);
-					
+
 				}
 			}
 
@@ -163,7 +286,7 @@ void TaskExecutor::execute()
 			vector<SlaveSyncData>& update = updateCollection[ROOT];
 			for (auto& updateData : update) {
 				int task_id = updateData.task_id;
-				samplers[task_id].update(updateData);
+				//samplers[task_id].update(updateData);
 			}
 
 			//mpiBroadCast(update, ROOT, config.processID);
@@ -177,7 +300,7 @@ void TaskExecutor::execute()
 			mpiReceive2(update, ROOT);
 			for (auto& updateData : update) {
 				int task_id = updateData.task_id;
-				samplers[task_id].update(updateData);
+				//samplers[task_id].update(updateData);
 			}
 		}
 
@@ -202,111 +325,4 @@ TaskExecutor::TaskExecutor(JobConfig config)
 
 TaskExecutor::~TaskExecutor()
 {
-}
-
-SlaveSyncData TaskExecutor::sampleTask(Task & task)
-{
-
-	SlaveSyncData syncData;
-	syncData.pid = config.processID;
-	syncData.task_id = task.id;
-
-	double alpha = task.alpha;
-	double beta = task.beta;
-	int K = task.K;
-	double Vbeta = (double)task.V * beta;
-	double Kalpha = (double)task.K * alpha;
-
-
-	for (int wi = 0; wi < task.wordSampling.size(); wi++) {
-
-		//timer.reset(); //reset at each word
-
-		/*
-			TODO: has to test which is better
-
-			1. Gibbs' sampling in the local with updating nw,nd,nwsum on every word, OR
-			2. Updating nw, nd, nwsum only when synchronizing.
-
-			The current implementation is 1.
-		*/
-
-		//in job.cpp, we did push_back(vector<int>({ doc_i, w, docWord_i }))
-		vector<int> tempWord = task.wordSampling.at(wi);
-		int m = tempWord.at(0);
-		int w = tempWord.at(1);
-		int n = tempWord.at(2);
-		//z[m][n] 
-		int topic = task.z.at(wi);
-		//rtime("1"); timer.reset();
-		//local copy of task
-		//task.nw[w][topic] -= 1;
-		//task.nd[m][topic] -= 1;
-		//task.nwsum[topic] -= 1;
-		//task.ndsum[m] -= 1;
-		if (syncData.nwDiff[w].size() == 0) {
-			syncData.nwDiff[w] = vector<int>(K, 0);
-		}
-		if (syncData.ndDiff[m].size() == 0) {
-			syncData.ndDiff[m] = vector<int>(K, 0);
-		}
-
-		//changes to be sychronized
-		syncData.nwDiff[w][topic] -= 1;
-		syncData.ndDiff[m][topic] -= 1;
-		syncData.nwsumDiff[topic] -= 1;
-		//rtime("2"); timer.reset();
-		double* p = new double[K];
-
-		vector<int>& nw = task.nw.at(w);
-		vector<int>& nwsum = task.nwsum;
-		vector<int>& nd = task.nd.at(m);
-		map<int, int>& ndsum = task.ndsum;
-
-
-		for (int k = 0; k < K; k++) {
-			//timer.reset();
-			double A = nw.at(k) - 1;
-			//rtime("2.1"); timer.reset();
-			double B = nwsum.at(k) - 1;
-			//rtime("2.2"); timer.reset();
-			double C = nd.at(k) - 1;
-			//rtime("2.3"); timer.reset();
-			double D = ndsum.at(m) - 1;
-			//rtime("2.4"); timer.reset();
-			p[k] = (A + beta) / (B + Vbeta) *
-				(C + alpha) / (D + Kalpha);
-			//rtime("2.5"); timer.reset();
-		}
-		//rtime("3"); timer.reset();
-		// cumulate multinomial parameters
-		for (int k = 1; k < K; k++) {
-			p[k] += p[k - 1];
-		}
-		// scaled sample because of unnormalized p[]
-		double u = ((double)rand() / (double)RAND_MAX) * p[K - 1];
-
-		for (topic = 0; topic < K; topic++) {
-			if (p[topic] >= u) {
-				break;
-			}
-		}
-		delete[] p;
-		//rtime("4"); timer.reset();
-		//task.nw[w][topic] += 1;
-		//task.nd[m][topic] += 1;
-		//task.nwsum[topic] += 1;
-		//task.ndsum[m] += 1;
-
-		syncData.nwDiff[w][topic] += 1;
-		//rtime("4.1"); timer.reset();
-		syncData.ndDiff[m][topic] += 1;
-		//rtime("4.2"); timer.reset();
-		syncData.nwsumDiff[topic] += 1;
-		//rtime("4.3"); timer.reset();
-		task.z[wi] = topic;
-		//rtime("5"); timer.reset();
-
-	}
-	return syncData;
 }

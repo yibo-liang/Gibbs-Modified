@@ -81,7 +81,7 @@ int master(JobConfig &config) {
 	TaskGenerator lda_job(config);
 	TaskExecutor executor(config);
 	lda_job.startMasterJob(executor);
-	executor.execute();
+	executor.execute2();
 	cout << "All Job Done.";
 	string result = executor.model->getTopicWords(25);
 	ofstream myfile;

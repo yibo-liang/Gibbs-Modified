@@ -37,7 +37,7 @@ public:
 
 
 	hashmap<int, vector<int>> nd; //partial nd
-	hashmap<int, vector<int>> nw; //partial nw
+	vec2d<int> nw; //partial nw
 	vector<int> nwsum;
 	map<int, int> ndsum;
 
