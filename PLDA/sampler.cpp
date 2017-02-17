@@ -10,7 +10,7 @@ inline int Sampler::mapM(int m)
 	return documentOffset + m;
 }
 
-void Sampler::sample2()
+void Sampler::sample()
 {
 	//Sampling using AD-LDA algorithm for one iteration
 	//asume that task are partitioned into different document groups, no 2 task have a same document to sample
@@ -33,16 +33,18 @@ void Sampler::sample2()
 		//local partial model
 		plusIn2D(nw, -1, w, topic, K);
 		plusIn2D(nd, -1, m, topic, K);
-		int _nwsum = --nwsum[topic];
+		nwsum[topic]--;
+		ndsum[m]--;
+
 		//ndsum[m] -= 1; // no need for changing the value, only need ref of ndsum-1
 
 		Mchange[m] = true;
 
 		for (int k = 0; k < K; k++) {
 			double A = readvec2D(nw, w, k, K);
-			double B = _nwsum;
+			double B = nwsum[k];
 			double C = readvec2D(nd, m, k, K);
-			double D = 1;
+			double D = ndsum[m];
 			p[k] = (A + beta) / (B + Vbeta) *
 				(C + alpha) / (D + Kalpha);
 		}
@@ -61,8 +63,8 @@ void Sampler::sample2()
 		//local partial model
 		plusIn2D(nw, 1, w, topic, K);
 		plusIn2D(nd, 1, m, topic, K);
-		nwsum[topic] += 1;
-		//ndsum[m] += 1;
+		nwsum[topic]++;
+		ndsum[m]++;
 
 
 	}
@@ -159,8 +161,12 @@ Sampler::Sampler()
 
 Sampler::~Sampler()
 {
-	free(nd);
-	free(nw);
-	free(wordSampling);
+	delete[] nd;
+	delete[] nw;
+	delete[] wordSampling;
+
+	//free(nd);
+	//free(nw);
+	//free(wordSampling);
 
 }

@@ -73,7 +73,7 @@ Model TaskGenerator::createInitialModel()
 	Model model;
 	//initial values
 	model.K = config.hierarchStructure[0];
-	model.M = config.documentNumber;
+	model.M = corpus.documents.size();
 	model.V = corpus.indexToWord.size();
 	model.alpha = config.alpha;
 	model.beta = config.beta;
@@ -151,13 +151,15 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 
 
 				int w = doc.words.at(wordIndexInDoc);
-				tasksForSingleExecutor[taskNumber_i]
+				int task_i_in_process = taskNumber_i % config.taskPerProcess;
+
+				tasksForSingleExecutor[task_i_in_process]
 					.wordSampling
 					.push_back(vector<int>({ doc_i, w, wordIndexInDoc }));
 				int k = initial_model.z[doc_i][wordIndexInDoc]; //k, topic assignment of the word in doc
-				tasksForSingleExecutor[taskNumber_i].z.push_back(k);
+				tasksForSingleExecutor[task_i_in_process].z.push_back(k);
 				//tasksForSingleExecutor[taskNumber_i].vocabulary[w] = true;
-				tasksForSingleExecutor[taskNumber_i].docCollection[doc_i] = true;
+				tasksForSingleExecutor[task_i_in_process].docCollection[doc_i] = true;
 
 				//cout << "generateSimpleTasks 153, word_i="<< docWord_i << endl;
 				//next word
@@ -172,7 +174,7 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 				//next task 
 				if (taskNumber_i % config.taskPerProcess == 0) {
 					processNumber_i++;
-					taskNumber_i = 0;
+
 					tasksForSingleExecutor = result[processNumber_i];
 					//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
 

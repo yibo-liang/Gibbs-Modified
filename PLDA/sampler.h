@@ -55,7 +55,7 @@ public:
 
 	/* ------- Methods -----*/
 
-	void sample2();
+	void sample();
 
 	
 	void fromTask(const Task& task);

@@ -25,7 +25,6 @@ public:
 	void receiveMasterTasks(vector<Task> & tasks, Model * model); // master node task executor should use this, so no mpi is used for faster speed
 	void receiveRemoteTasks(); //all other proecess should use this
 
-	void execute2();
 	void execute();
 
 	TaskExecutor( JobConfig config);
@@ -51,8 +50,8 @@ private:
 	
 	
 
-	void runMaster();
-	void runSlave();
+	void execMaster();
+	void execSlave();
 
 };
 

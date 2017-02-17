@@ -81,7 +81,7 @@ int master(JobConfig &config) {
 	TaskExecutor executor(config);
 	lda_job.startMasterJob(executor);
 	executor.model->corpus = &lda_job.corpus;
-	executor.execute2();
+	executor.execute();
 	cout << "All Job Done.";
 	string result = executor.model->getTopicWords(25);
 	ofstream myfile;
@@ -119,11 +119,11 @@ int main(int argc, char *argv[]) {
 	JobConfig config;
 	config.processID = worldRank;
 	config.totalProcessCount = worldSize;
+	if (getProgramOption(argc, argv, &config) != 0) return 1;
 
 	if (worldRank == 0) {
-		if (getProgramOption(argc, argv, &config) != 0) return 1;
-
-		//std::cin.ignore();
+		
+		std::cin.ignore();
 		master(config);
 	}
 	else {
