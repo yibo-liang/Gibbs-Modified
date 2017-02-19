@@ -41,7 +41,6 @@ void TaskGenerator::startMasterJob(
 	//send tasks to remote mpi process
 
 
-	auto iter = taskGroups.begin();
 
 	using namespace MPIHelper;
 	for (int proc_n = 0; proc_n < taskGroups.size(); proc_n++) {
@@ -52,7 +51,7 @@ void TaskGenerator::startMasterJob(
 		}
 		else {
 			cout << "send to slave " << proc_n << endl;
-			mpiSend(*iter, proc_n);
+			mpiSend(group, proc_n);
 		}
 	}
 
@@ -131,7 +130,7 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 
 	//cout << "generateSimpleTasks 126, total p=" << config.totalProcessCount << endl;
 	vector<vector<Task>> result = vector<vector<Task>>(config.totalProcessCount, vector<Task>(config.taskPerProcess, sampleTask));
-	auto& tasksForSingleExecutor = result[0];
+	vector<Task> * tasksForSingleExecutor = &result[0];
 
 
 	if (config.parallelType == P_MPI) {
@@ -152,14 +151,14 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 
 				int w = doc.words.at(wordIndexInDoc);
 				int task_i_in_process = taskNumber_i % config.taskPerProcess;
-
-				tasksForSingleExecutor[task_i_in_process]
+				Task * task = &(*tasksForSingleExecutor)[task_i_in_process];
+				(*task)
 					.wordSampling
 					.push_back(vector<int>({ doc_i, w, wordIndexInDoc }));
 				int k = initial_model.z[doc_i][wordIndexInDoc]; //k, topic assignment of the word in doc
-				tasksForSingleExecutor[task_i_in_process].z.push_back(k);
+				(*task).z.push_back(k);
 				//tasksForSingleExecutor[taskNumber_i].vocabulary[w] = true;
-				tasksForSingleExecutor[task_i_in_process].docCollection[doc_i] = true;
+				(*task).docCollection[doc_i] = true;
 
 				//cout << "generateSimpleTasks 153, word_i="<< docWord_i << endl;
 				//next word
@@ -175,7 +174,7 @@ vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
 				if (taskNumber_i % config.taskPerProcess == 0) {
 					processNumber_i++;
 
-					tasksForSingleExecutor = result[processNumber_i];
+					tasksForSingleExecutor = &result[processNumber_i];
 					//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
 
 				}

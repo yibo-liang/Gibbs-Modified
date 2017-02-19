@@ -48,7 +48,7 @@ public:
 	
 	/* ------ Mapping for update ----*/
 
-	hashmap<int, int> docMap; // global m to local m
+	//hashmap<int, int> docMap; // global m to local m
 	//hashmap<int, int> vocabMap; //global v to local v
 
 	
@@ -68,8 +68,6 @@ private:
 	/* ------- arrays used for Sampling, allocated only once for speed ----*/
 	friend class Sampler;
 	vector<double> p;
-	vector<bool> Mchange;
-	vector<bool> Vchange;
 
 	inline void clearSyncBuffer();
 

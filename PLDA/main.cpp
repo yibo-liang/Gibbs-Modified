@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
 
 	if (worldRank == 0) {
 		
-		std::cin.ignore();
+		//std::cin.ignore();
 		master(config);
 	}
 	else {

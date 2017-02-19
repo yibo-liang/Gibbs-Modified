@@ -38,8 +38,6 @@ void Sampler::sample()
 
 		//ndsum[m] -= 1; // no need for changing the value, only need ref of ndsum-1
 
-		Mchange[m] = true;
-
 		for (int k = 0; k < K; k++) {
 			double A = readvec2D(nw, w, k, K);
 			double B = nwsum[k];
@@ -111,10 +109,9 @@ void Sampler::fromTask(const Task& task)
 
 	//nd & ndsum 
 	this->documentOffset = task.ndsum.begin()->first;
-	Mchange = vector<bool>(partialM);
+	//cout << "sampler id=" << this->task_id << ", d offset= " << this->documentOffset<<endl;
 	for (int m = 0; m < partialM; m++) {
 		int global_m = mapM(m);
-		docMap[global_m] = m;
 		ndsum[m] = task.ndsum.at(global_m);
 		for (int k = 0; k < K; k++) {
 			int tmp = task.nd.at(global_m).at(k);

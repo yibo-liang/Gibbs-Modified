@@ -55,7 +55,7 @@ void TaskExecutor::receiveRemoteTasks()
 	this->samplers = vector<Sampler>(tasks.size());
 
 	for (auto &task : tasks) {
-
+		cout << "Give task to sampler, PID=" << this->procNumber << ", Task id= " << task.id << endl;
 		this->samplers[task.id].fromTask(task);
 		this->samplers[task.id].pid = config.processID;
 	}
@@ -65,7 +65,7 @@ void TaskExecutor::receiveRemoteTasks()
 
 using namespace fastVector2D;
 inline void importND(Model * model, vecFast2D<int> nd, int partialM, int offset) {
-	cout << "import nd offset=" << offset << ", partialM=" << partialM;
+	cout << "import nd offset=" << offset << ", partialM=" << partialM << endl;
 	int K = model->K;
 	for (int m = 0; m < partialM; m++) {
 		for (int k = 0; k < K; k++) {
@@ -114,6 +114,7 @@ void TaskExecutor::execMaster()
 		// sync model with all sampler's data, using n[w,k] <- n[w,k] + sum (n[p][w,k] - n[w|k])
 		// and also calculate new nwsum
 		int K = model->K;
+		int nwsumAll = 0;
 		for (int k = 0; k < K; k++) {
 			int nwsum = 0;
 			for (int w = 0; w < model->V; w++) {
@@ -123,11 +124,22 @@ void TaskExecutor::execMaster()
 					vecFast2D<int> nw_j = nwCollection[j];
 					sum += readvec2D(nw_j, w, k, K) - old_nwk;
 				}
-				model->nw[w][k] = std::min(old_nwk + sum, 0);
+				model->nw[w][k] = old_nwk + sum;
+				if (model->nw[w][k] < 0) {
+					cout << "nw < 0, w=" << w << ", k=" << k << ", sum=" << sum << ", nw=" << model->nw[w][k] << ", old nw=" << old_nwk << endl;
+					cout << "nwsum[k]=" << model->nwsum[k] << endl;
+					for (int j = 0; j < totalTask; j++) {
+						vecFast2D<int> nw_j = nwCollection[j];
+						cout << "j=" << j << ", nw_j[w][k] = " << readvec2D(nw_j, w, k, K) <<  endl;
+					}
+					cout << endl;
+					throw 20;
+				}
 				writevec2D<int>(model->nw[w][k], temp_nw, w, k, K);
 				nwsum += model->nw[w][k];
 			}
 			model->nwsum[k] = nwsum;
+			nwsumAll += nwsum;
 		}
 		//send back nw nwsum
 		MPI_Bcast(temp_nw, s, MPI_INT, ROOT, MPI_COMM_WORLD);
@@ -136,7 +148,7 @@ void TaskExecutor::execMaster()
 
 		for (int si = 0; si < samplers.size(); si++) {
 			auto& sampler = samplers[si];
-			memcpy(sampler.nw, temp_nw, s*sizeof(int)); //direct memory copy for other sampler's nw
+			memcpy(sampler.nw, temp_nw, s * sizeof(int)); //direct memory copy for other sampler's nw
 			//for (int it = 0; it < nwSize; it++) {
 			//	sampler.nw[it] = temp_nw[it];
 			//}
@@ -145,19 +157,21 @@ void TaskExecutor::execMaster()
 
 		cout << "Iteration " << iteration_i;
 		double t2 = t.elapsed();
-		cout << ", elapsed" << t2 << "" << endl;
+		cout << ", elapsed" << t2 << ", nwsum all=" << nwsumAll << endl;
 
 		iteration_i++;
 	}
 	free(temp_nw);
 	//receive all sampler result from other process
 
-	for (int i = 0; i < config.processID; i++) {
+	for (int i = 0; i < config.totalProcessCount; i++) {
 		if (i != ROOT) {
 			for (int j = 0; j < config.taskPerProcess; j++) {
 				int info[3];
+				cout << "master receiving partial nd from pid=" << i;
 				MPI_Recv(&info, 3, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //SEND partial document count = M 
 				int task_id = info[0];
+				cout << "task i=" << task_id << endl;
 				int partialM = info[1];
 				int documentOffset = info[2];
 				vecFast2D<int> tmp = newVec2D<int>(partialM, model->K);
@@ -200,7 +214,7 @@ void TaskExecutor::execSlave()
 		for (auto& sampler : samplers) {
 			if (sampler.task_id != s0.task_id) {
 
-				memcpy(sampler.nw, s0.nw, nwSize*sizeof(int)); //direct memory copy for other sampler's nw
+				memcpy(sampler.nw, s0.nw, nwSize * sizeof(int)); //direct memory copy for other sampler's nw
 				sampler.nwsum = s0.nwsum;
 			}
 		}
@@ -217,6 +231,7 @@ void TaskExecutor::execSlave()
 		int info[3] = { sampler.task_id, s, sampler.documentOffset };
 		MPI_Send(&info, 3, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND partial document count = M 
 		MPI_Send(sampler.nd, s * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+		cout << "Partial sent, pid="<< config.processID << endl;
 
 	}
 }
@@ -235,6 +250,7 @@ void TaskExecutor::execute()
 TaskExecutor::TaskExecutor(JobConfig config)
 {
 	this->config = config;
+	this->procNumber = config.processID;
 	if (config.processID == MPIHelper::ROOT) isMaster = true;
 
 }
