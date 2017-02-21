@@ -34,6 +34,8 @@ public:
 	Model();
 	~Model();
 
+	void updateSums();
+
 private:
 	void computeTheta();
 	void computePhi();

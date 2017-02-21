@@ -22,7 +22,7 @@ string Model::getTopicWords(int n)
 		std::sort(topic_word_distrib.begin(), topic_word_distrib.end(), [](pair<string, double> const& a, pair<string, double> const& b) {return a.second > b.second; });
 		ss << "Topic " << i << " ";
 		for (int j = 0; j < n; j++) {
-			ss << topic_word_distrib[j].first<<"("<< topic_word_distrib[j].second <<"), ";
+			ss << topic_word_distrib[j].first << "(" << topic_word_distrib[j].second << "), ";
 		}
 		ss << endl;
 	}
@@ -52,6 +52,24 @@ Model::Model()
 
 Model::~Model()
 {
+}
+
+void Model::
+updateSums()
+{
+	for (int m = 0; m < M; m++) {
+		ndsum[m] = 0;
+		for (int k = 0; k < K; k++) {
+			ndsum[m] += nd[m][k];
+		}
+	}
+
+	for (int k = 0; k < K; k++) {
+		nwsum[k] = 0;
+		for (int v = 0; v < V; v++) {
+			nwsum[k] += nw[v][k];
+		}
+	}
 }
 
 void Model::computeTheta()

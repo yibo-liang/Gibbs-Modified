@@ -28,7 +28,6 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
 		("hierarch,h", po::value<std::vector<int> >()->multitoken(), "set hierarchical structure in form (ignore brackets) [n1 n2 n3 ...], if unset, it will be a single topic model")
-		("task-per-proc,tpp", po::value<int>(), "set task number per process")
 		;
 
 	po::variables_map vm;
@@ -67,9 +66,6 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	else {
 		config->hierarchStructure = vector<int>({ 1 });
 	}
-	if (vm.count("task-per-proc")) {
-		config->taskPerProcess = vm["task-per-proc"].as<int>();
-	}
 
 
 	return 0;
@@ -94,13 +90,9 @@ int master(JobConfig &config) {
 }
 
 int slave(JobConfig config) {
-	cout << config.processID << "," << 1 << endl; 
 	TaskExecutor executor(config);
-	cout << config.processID << "," << 2 << endl;
 	executor.receiveRemoteTasks();
-	cout << config.processID << "," << 3 << endl;
 	executor.execute();
-	cout << config.processID << "," << 4 << endl;
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 }
@@ -119,10 +111,12 @@ int main(int argc, char *argv[]) {
 	JobConfig config;
 	config.processID = worldRank;
 	config.totalProcessCount = worldSize;
+	config.taskPerProcess = worldSize;
 	if (getProgramOption(argc, argv, &config) != 0) return 1;
 
 	if (worldRank == 0) {
-		
+
+		cin.ignore();
 		//std::cin.ignore();
 		master(config);
 	}

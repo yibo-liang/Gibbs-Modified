@@ -63,15 +63,15 @@ namespace fastVector2D {
 	}
 
 	template<typename N>
-	inline N readvec2D(vecFast2D<N> vec, size_t x, size_t y, size_t col_size) {
+	inline N readvec2D(vecFast2D<N> vec, size_t row_num, size_t col_num, size_t col_size) {
 		//read 1D vector in a 2D manner, as we are reading vec[x][y]; where col_size is the column size of this 2D array.
-		return vec[y + x*col_size];
+		return vec[col_num + row_num*col_size];
 	}
 
 	template<typename N>
-	inline void writevec2D(N val, vecFast2D<N> vec, size_t x, size_t y, size_t col_size) {
+	inline void writevec2D(N val, vecFast2D<N> vec, size_t row_num, size_t col_num, size_t col_size) {
 		//write function same for above purpose
-		vec[y + x*col_size] = val;
+		vec[col_num + row_num*col_size] = val;
 	}
 
 
@@ -82,8 +82,8 @@ namespace fastVector2D {
 	}
 
 	template<typename N>
-	inline void plusIn2D(vecFast2D<N> vec, const N& value, size_t x, size_t y, size_t col_size) {
-		vec[y + x*col_size] += value;
+	inline void plusIn2D(vecFast2D<N> vec, const N& value, size_t row_num, size_t col_num, size_t col_size) {
+		vec[col_num + row_num*col_size] += value;
 	}
 
 }

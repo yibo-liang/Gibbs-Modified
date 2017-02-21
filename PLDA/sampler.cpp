@@ -1,42 +1,28 @@
 #include "sampler.h"
 
-inline void Sampler::clearSyncBuffer()
-{
-
-}
-
-inline int Sampler::mapM(int m)
-{
-	return documentOffset + m;
-}
-
 void Sampler::sample()
 {
 	//Sampling using AD-LDA algorithm for one iteration
 	//asume that task are partitioned into different document groups, no 2 task have a same document to sample
 
 	/* ------------- initialising sync buffer ------------  */
-	clearSyncBuffer();
 	/* ------------- Sample start ------------  */
 
-	double Vbeta = (double)V * beta;
+	double Vbeta = (double)partialV * beta;
 	double Kalpha = (double)K * alpha;
 
 	for (int wi = 0; wi < wordInsNum; wi++) {
-		int m = readvec2D(wordSampling, wi, 0, 2);
-		int w = readvec2D(wordSampling, wi, 1, 2);
-		//int n = readvec2D(wordSampling, wi, 2, wordInfoSize);
+		int m = readvec2D(wordSampling, wi, 0, 3);
+		int w = readvec2D(wordSampling, wi, 1, 3);
 
-		int topic = z.at(wi);
+		int topic = readvec2D(wordSampling, wi, 2, 3);
 
 
 		//local partial model
 		plusIn2D(nw, -1, w, topic, K);
 		plusIn2D(nd, -1, m, topic, K);
 		nwsum[topic]--;
-		ndsum[m]--;
-
-		//ndsum[m] -= 1; // no need for changing the value, only need ref of ndsum-1
+		//ndsum[m]--;
 
 		for (int k = 0; k < K; k++) {
 			double A = readvec2D(nw, w, k, K);
@@ -55,72 +41,61 @@ void Sampler::sample()
 				break;
 			}
 		}
-		z[wi] = topic;
+
+		writevec2D<int>(topic, wordSampling, wi, 2, 3);
 
 
 		//local partial model
 		plusIn2D(nw, 1, w, topic, K);
 		plusIn2D(nd, 1, m, topic, K);
-		nwsum[topic]++;
-		ndsum[m]++;
 
+		nwsum[topic]++;
+		//ndsum[m]++;
 
 	}
 
 
 }
 
-void Sampler::fromTask(const Task& task)
+void Sampler::fromTask(const TaskPartition& task)
 {
 	//allocate memory and copy values from task
-	wordInsNum = task.wordSampling.size();
-	wordInfoSize = task.wordSampling.at(0).size(); //should be 3
+	wordInsNum = task.words.size();
+	wordInfoSize = 3; //should be 3
 
 
-	this->task_id = task.id;
-
-	this->z = task.z;
+	this->partition_id = task.id;
 
 	this->alpha = task.alpha;
 	this->beta = task.beta;
 
 	this->K = task.K;
-	this->p = vector<double>(K, 0);
+	this->V = task.V;
+	this->p = vector<double>(K, 0); // vector used for rollete wheel selection from accumulated distribution
 
-	this->V = task.V; //total vocabulary 
+	this->partialM = task.partitionM;
+	this->partialV = task.partitionV;
 
-	this->partialM = task.nd.size();
-	this->partialV = task.nw.size();
+	this->offsetM = task.offsetM;
+	this->offsetV = task.offsetV;
 
 	this->nd = newVec2D<int>(partialM, K);
 	this->nw = newVec2D<int>(partialV, K);
 
 	this->nwsum = task.nwsum;
-	this->ndsum = vector<int>(task.ndsum.size(), K);
+	this->ndsum = task.ndsum;
 
-	// store vocabulary offset
-	//this->vocabOffsetMap = vector<int>(task.vocabulary.size());
 
-	//int i = 0;
-	//for (auto& it : task.vocabulary) {
-	//	vocabOffsetMap[i] = it.first;
-	//	i++;
-	//}
-
-	//nd & ndsum 
-	this->documentOffset = task.ndsum.begin()->first;
-	//cout << "sampler id=" << this->task_id << ", d offset= " << this->documentOffset<<endl;
 	for (int m = 0; m < partialM; m++) {
-		int global_m = mapM(m);
-		ndsum[m] = task.ndsum.at(global_m);
+		ndsum[m] = task.ndsum.at(m);
 		for (int k = 0; k < K; k++) {
-			int tmp = task.nd.at(global_m).at(k);
+			int tmp = task.nd.at(m).at(k);
 			writevec2D<int>(tmp, nd, m, k, K);
 		}
 	}
 
 	//nw & nwsum
-	for (int v = 0; v < task.V; v++) {
+	for (int v = 0; v < task.partitionV; v++) {
 		for (int k = 0; k < K; k++) {
 			int tmp = task.nw.at(v).at(k);
 			writevec2D<int>(tmp, nw, v, k, K);
@@ -128,21 +103,27 @@ void Sampler::fromTask(const Task& task)
 	}
 
 	//word instances 
-	this->wordSampling = newVec2D<int>(wordInsNum, 2);
+	this->wordSampling = newVec2D<int>(wordInsNum, 3);
 	for (int i = 0; i < wordInsNum; i++) {
-		int m = task.wordSampling.at(i).at(0);
-		m = m - documentOffset;
-		int w = task.wordSampling.at(i).at(1);
-		int wordIndexInDoc = task.wordSampling.at(i).at(2);
+		int m = task.words.at(i).at(0);
+		int w = task.words.at(i).at(1);
+		int z = task.words.at(i).at(2);
 
-		writevec2D<int>(m, wordSampling, i, 0, 2);
-		writevec2D<int>(w, wordSampling, i, 1, 2);
+		if (z >= 30) {
+			cout << "error topic n=" << z << endl;
+			cout << this->pid << ", " << this->partition_id << endl;
+			throw 20;
+		}
+
+		writevec2D<int>(m, wordSampling, i, 0, 3);
+		writevec2D<int>(w, wordSampling, i, 1, 3);
+		writevec2D<int>(z, wordSampling, i, 2, 3);
 
 	}
 
 }
 
-Sampler::Sampler(const Task & task)
+Sampler::Sampler(const TaskPartition & task)
 {
 	fromTask(task);
 }
@@ -166,4 +147,21 @@ Sampler::~Sampler()
 	//free(nw);
 	//free(wordSampling);
 
+}
+
+void Sampler::update()
+{
+	for (int m = 0; m < partialM; m++) {
+		ndsum[m] = 0;
+		for (int k = 0; k < K; k++) {
+			ndsum[m] += readvec2D(nd, m, k, K);
+		}
+	}
+
+	for (int k = 0; k < K; k++) {
+		nwsum[k] = 0;
+		for (int v = 0; v < partialV; v++) {
+			nwsum[k] = readvec2D(nw, v, k, K);
+		}
+	}
 }

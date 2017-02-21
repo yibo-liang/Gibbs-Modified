@@ -5,7 +5,7 @@
 
 #include "shared_header.h"
 #include "job_config.h"
-#include "task.h"
+#include "task_partition.h"
 #include "slave_sync_data.h"
 
 using namespace fastVector2D;
@@ -23,22 +23,21 @@ public:
 	*/
 
 	int pid;
-	int task_id;
+	int partition_id;
 	int K;
 	int V;
-	vecFast2D<int> wordSampling; //size of W * 3 contains [(doc_id, w, word_id)....]
-
-	vector<int> z;
+	vecFast2D<int> wordSampling; //size of W * 3 contains [(doc_id, w, z)....]
 
 	//vector<int> vocabOffsetMap;  // [(local v index=>global vocabulary index)]
-	int documentOffset; //starting document offset, since an executor only contains a subset of the model, we need an offset to calculate its mapping to the full model;
+	int offsetM; //starting document offset, since an executor only contains a subset of the model, we need an offset to calculate its mapping to the full model;
+	int offsetV; 
 
 	double alpha, beta;
 
-	int partialM;  //the document count for this partial model
-	int partialV; //the vocabulary count for this partial model
-	int wordInfoSize;
-	int wordInsNum;
+	int partialM;  // the document count for this partial model
+	int partialV; // the vocabulary count for this partial model
+	int wordInfoSize; // the size of sub vector of the information of a word,
+	int wordInsNum; // number of words in this sampler
 
 	vecFast2D<int> nd;// na[i][j]: number of words in document i assigned to topic j, size M x K
 	vecFast2D<int> nw;// cwt[i][j]: number of instances of word/term i assigned to topic j, size V x K
@@ -58,20 +57,19 @@ public:
 	void sample();
 
 	
-	void fromTask(const Task& task);
-	Sampler(const Task& task);
+	void fromTask(const TaskPartition& task);
+	Sampler(const TaskPartition& task);
 	Sampler(const Sampler& s);
 	Sampler();
 	~Sampler();
 
+	void update();
 private:
 	/* ------- arrays used for Sampling, allocated only once for speed ----*/
 	friend class Sampler;
 	vector<double> p;
 
-	inline void clearSyncBuffer();
 
-	inline int mapM(int m); //map from nd array index to global document id;
 	//inline int mapV(int v); //map from nw array index to global vocabulary id;
 
 };

@@ -32,7 +32,7 @@ void TaskGenerator::startMasterJob(
 	cout << "------------------------------" << endl;
 
 	cout << "Creating tasks ... " << endl;
-	vector<vector<Task>> taskGroups = generateSimpleTasks(model);
+	vector<vector<TaskPartition>> taskGroups = generateSimpleTasks(model);
 	cout << "Done." << endl;
 	cout << "\t" << taskGroups.size() << " task Groups created, each has " << taskGroups.at(0).size() << "tasks" << endl;
 	cout << "------------------------------" << endl;
@@ -113,101 +113,154 @@ void TaskGenerator::loadCorpus()
 	}
 }
 
-vector<vector<Task>> TaskGenerator::generateSimpleTasks(Model &initial_model)
-{
-	//cout << "generateSimpleTasks 117" << endl;
-	int taskNumber = config.totalProcessCount * config.taskPerProcess;
-	//cout << "generateSimpleTasks 127, taskNumber=" << taskNumber << endl;
-
-	Task sampleTask;
-	sampleTask.K = model.K;
-	sampleTask.V = model.V;
-
-	sampleTask.alpha = initial_model.alpha;
-	sampleTask.beta = initial_model.beta;
-	sampleTask.nw = initial_model.nw;
-	sampleTask.nwsum = initial_model.nwsum;
-
-	//cout << "generateSimpleTasks 126, total p=" << config.totalProcessCount << endl;
-	vector<vector<Task>> result = vector<vector<Task>>(config.totalProcessCount, vector<Task>(config.taskPerProcess, sampleTask));
-	vector<Task> * tasksForSingleExecutor = &result[0];
-
-
-	if (config.parallelType == P_MPI) {
-		int groupSize = corpus.totalWordCount / (taskNumber)+1;
-
-		//divide corpus equally according to word number, rather than document number
-
-		int processNumber_i = 0;
-		int taskNumber_i = 0;
-		int wordIterator = 0; //word index iterator of the whole corpus, that is, the total set of word instances of all documents
-		//cout << "generateSimpleTasks 138, gsize=" << groupSize << endl;
-		for (int doc_i = 0; doc_i < model.M; doc_i++) {
-			Document& doc = corpus.documents.at(doc_i);
-			//cout << "generateSimpleTasks 140, doc_i=" << doc_i<< endl;
-			//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
-			for (int wordIndexInDoc = 0; wordIndexInDoc < doc.wordCount(); wordIndexInDoc++) {
-
-
-				int w = doc.words.at(wordIndexInDoc);
-				int task_i_in_process = taskNumber_i % config.taskPerProcess;
-				Task * task = &(*tasksForSingleExecutor)[task_i_in_process];
-				(*task)
-					.wordSampling
-					.push_back(vector<int>({ doc_i, w, wordIndexInDoc }));
-				int k = initial_model.z[doc_i][wordIndexInDoc]; //k, topic assignment of the word in doc
-				(*task).z.push_back(k);
-				//tasksForSingleExecutor[taskNumber_i].vocabulary[w] = true;
-				(*task).docCollection[doc_i] = true;
-
-				//cout << "generateSimpleTasks 153, word_i="<< docWord_i << endl;
-				//next word
-				wordIterator++;
-			}
-
-			if (wordIterator >= groupSize*(taskNumber_i + 1)) {
-
-				//before going to next task, add neccessary nd nw segment 
-
-				taskNumber_i++;
-				//next task 
-				if (taskNumber_i % config.taskPerProcess == 0) {
-					processNumber_i++;
-
-					tasksForSingleExecutor = &result[processNumber_i];
-					//tasksForSingleExecutor[taskNumber_i].ndsum[doc_i] = (initial_model.ndsum.at(doc_i));
-
-				}
-
-				//cout << "Cur tn=" << taskNumber_i << endl;
-			}
+int getPartitionID(vector<size_t> partitionVec, int i) {
+	if (partitionVec.size() == 1) return 0;
+	for (int j = 1; j < partitionVec.size(); j++) {
+		size_t p = partitionVec[j];
+		if (i < p) {
+			return j - 1;
 		}
-
-	}
-	for (int pid = 0; pid < result.size(); pid++) {
-		auto & vec = result[pid];
-		for (int task_id = 0; task_id < vec.size(); task_id++) {
-			auto & task = vec[task_id];
-			task.id = task_id;
-
-
-			/*
-			for (auto &it : task.vocabulary) {
-				task.nw[it.first] = initial_model.nw[it.first];
-			}
-			*/
-
-			for (auto &it : task.docCollection) {
-				task.nd[it.first] = initial_model.nd[it.first];
-				task.ndsum[it.first] = initial_model.ndsum[it.first];
-			}
-
-
+		else if (i >= p && j == partitionVec.size() - 1) {
+			return j;
 		}
 	}
-
-	//cout << "generateSimpleTasks 170" << endl;
-
-
-	return result;
+	cout << "Error: task partitioning failed!" << endl;
+	throw 20;
 }
+
+vector<vector<TaskPartition>> TaskGenerator::generateSimpleTasks(Model &initial_model) {
+
+
+	//initialise prototype partition
+	TaskPartition prototypePartition;
+	prototypePartition.K = model.K;
+	prototypePartition.V = model.V;
+	prototypePartition.alpha = config.alpha;
+	prototypePartition.beta = config.beta;
+
+	int nd_partition_count = config.totalProcessCount;
+	int nw_partition_count = config.taskPerProcess;
+
+	vector<vector<TaskPartition>> partitions =
+		vector<vector<TaskPartition>>(
+			nd_partition_count,
+			vector<TaskPartition>(
+				nw_partition_count,
+				prototypePartition
+				)
+			);
+
+
+	/*
+		calculate the partition size vector
+		this vector should equally divide nd and nw matrix into n^2 partitions by word count
+		so each column or row have similiar count of words
+
+		partition nd vs nw as row vs col, so non of two partitions share the same nw or nd
+
+	*/
+	vector<size_t> nd_partition_offsets;
+	vector<size_t> nw_partition_offsets;
+
+	int word_count = corpus.totalWordCount;
+	int row_average = word_count / nd_partition_count;
+	int col_average = word_count / nw_partition_count;
+
+	int sum = 0;
+	nd_partition_offsets.push_back(0);
+	for (int m = 0; m < initial_model.M; m++) {
+		int sum_row = 0;
+		for (int k = 0; k < initial_model.K; k++) {
+			sum_row += initial_model.nd[m][k];
+		}
+		sum += sum_row;
+		if (sum > row_average) {
+			sum = 0;
+			nd_partition_offsets.push_back(m);
+		}
+	}
+
+	sum = 0;
+	nw_partition_offsets.push_back(0);
+	for (int v = 0; v < initial_model.V; v++) {
+		int sum_col = 0;
+		for (int k = 0; k < initial_model.K; k++) {
+			sum_col += initial_model.nw[v][k];
+		}
+		sum += sum_col;
+		if (sum > col_average) {
+			sum = 0;
+			nw_partition_offsets.push_back(v);
+		}
+	}
+
+	//assign offsets for each partition
+	for (int row = 0; row < partitions.size(); row++) {
+		vector<TaskPartition> * row_p = &partitions[row];
+		int temp_id = 0;
+		for (int col = 0; col < row_p->size(); col++) {
+			TaskPartition * p = &(*row_p)[col];
+			p->id = temp_id;
+			temp_id++;
+
+			p->offsetM = nd_partition_offsets[row];
+			p->offsetV = nw_partition_offsets[col];
+
+			if (row == nd_partition_offsets.size() - 1) { // the last row
+				p->partitionM = initial_model.M - nd_partition_offsets[row];
+			}
+			else {
+				p->partitionM = nd_partition_offsets[row + 1] - nd_partition_offsets[row];
+			}
+
+			if (col == nw_partition_offsets.size() - 1) { // the last col
+				p->partitionV = initial_model.V - nw_partition_offsets[col];
+			}
+			else {
+				p->partitionV = nw_partition_offsets[col + 1] - nw_partition_offsets[col];
+			}
+
+			p->nd = vector<vector<int>>(p->partitionM, vector<int>(p->K));
+			p->nw = vector<vector<int>>(p->partitionV, vector<int>(p->K));
+			p->ndsum = vector<int>(p->partitionM, 0);
+			p->nwsum = vector<int>(p->K, 0);
+
+		}
+	}
+
+	//assign words for each partition
+	for (int doc_i = 0; doc_i < model.M; doc_i++) {
+		Document& doc = corpus.documents.at(doc_i);
+		int doc_partition = getPartitionID(nd_partition_offsets, doc_i);
+		for (int wordIndexInDoc = 0; wordIndexInDoc < doc.wordCount(); wordIndexInDoc++) {
+			int w = doc.words.at(wordIndexInDoc);
+			int word_partition = getPartitionID(nw_partition_offsets, w);
+
+			TaskPartition * partition = &(*(&partitions[doc_partition]))[word_partition];
+			int z_word = initial_model.z[doc_i][wordIndexInDoc];
+
+			int w_offset = nw_partition_offsets[word_partition];
+			int m_offset = nd_partition_offsets[doc_partition];
+
+			int partition_doc_i = doc_i - m_offset;
+			int partition_w = w - w_offset;
+
+			(*partition).words.push_back(
+				vector<int>({
+					partition_doc_i ,
+					partition_w,
+					z_word })
+				);
+
+			(*partition).nd[partition_doc_i][z_word] += 1;
+			(*partition).nw[partition_w][z_word] += 1;
+			(*partition).nwsum[z_word] += 1;
+			(*partition).ndsum[partition_doc_i] += 1;
+		}
+	}
+
+
+	return partitions;
+
+}
+
