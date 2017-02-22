@@ -8,11 +8,14 @@
 #include "task_partition.h"
 #include "slave_sync_data.h"
 
+#include "CL/cl.h"
 using namespace fastVector2D;
+
+
 class Sampler
 {
 public:
-	
+
 	/*
 	sampler executor contains all information to construct a LDA model and doing Gibbs Sampling, in a low level way
 	where all information stored in raw array in heap, for faster access and sampling
@@ -21,6 +24,7 @@ public:
 	vocabulary index w which requires a V sized array or a Hashmap;
 
 	*/
+	int sampleMode = P_MPI;
 
 	int pid;
 	int partition_id;
@@ -30,7 +34,7 @@ public:
 
 	//vector<int> vocabOffsetMap;  // [(local v index=>global vocabulary index)]
 	int offsetM; //starting document offset, since an executor only contains a subset of the model, we need an offset to calculate its mapping to the full model;
-	int offsetV; 
+	int offsetV;
 
 	double alpha, beta;
 
@@ -44,23 +48,19 @@ public:
 
 	vector<int> nwsum;// nwsum[j]: total number of words assigned to topic j, size K
 	vector<int> nwsumDiff; //nwsum difference
-	
+
 	vector<int> ndsum;// ndsum[i]: total number of words in document i, size M
-	
-	/* ------ Mapping for update ----*/
 
-	//hashmap<int, int> docMap; // global m to local m
-	//hashmap<int, int> vocabMap; //global v to local v
 
-	
+	struct clWrapper cldata;
 
 	/* ------- Methods -----*/
 
 	void sample();
 
-	
-	void fromTask(const TaskPartition& task);
-	Sampler(const TaskPartition& task);
+
+	void fromTask(TaskPartition& task);
+	Sampler(TaskPartition& task);
 	Sampler(const Sampler& s);
 	Sampler();
 	~Sampler();
@@ -69,7 +69,11 @@ private:
 	friend class Sampler;
 	vector<double> p;
 
+	void sample_MPI();
 
+	void prepare_GPU();
+	void sample_OPENCL();
+	void release_GPU();
 	//inline int mapV(int v); //map from nw array index to global vocabulary id;
 
 };

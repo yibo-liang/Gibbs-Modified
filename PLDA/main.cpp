@@ -28,6 +28,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
 		("hierarch,h", po::value<std::vector<int> >()->multitoken(), "set hierarchical structure in form (ignore brackets) [n1 n2 n3 ...], if unset, it will be a single topic model")
+		("mode,m", po::value<string>(), "set parallel mode, choose from GPU CPU (default).")
 		;
 
 	po::variables_map vm;
@@ -62,6 +63,9 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	}
 	if (vm.count("hierarch")) {
 		config->hierarchStructure = vm["hierarch"].as<vector<int>>();
+	}
+	if (vm.count("mode")) {
+		config->parallelType = vm["mode"].as<string>() == "CPU" ? P_MPI : P_GPU;
 	}
 	else {
 		config->hierarchStructure = vector<int>({ 1 });

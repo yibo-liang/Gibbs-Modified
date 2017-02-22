@@ -1,6 +1,15 @@
 #include "sampler.h"
 
-void Sampler::sample()
+void Sampler::sample() {
+	if (sampleMode == P_MPI) {
+		sample_MPI();
+	}
+	else {
+		sample_OPENCL();
+	}
+}
+
+void Sampler::sample_MPI()
 {
 	//Sampling using AD-LDA algorithm for one iteration
 	//asume that task are partitioned into different document groups, no 2 task have a same document to sample
@@ -60,7 +69,7 @@ void Sampler::sample()
 
 }
 
-void Sampler::fromTask(const TaskPartition& task)
+void Sampler::fromTask(TaskPartition& task)
 {
 	//allocate memory and copy values from task
 	wordInsNum = task.words.size();
@@ -112,6 +121,11 @@ void Sampler::fromTask(const TaskPartition& task)
 
 	//word instances 
 	this->wordSampling = newVec2D<int>(wordInsNum, 3);
+
+	std::sort(task.words.begin(), task.words.end(), [](const vector<int>& w1, const vector<int>& w2) {
+		return w1.at(1) < w2.at(1);
+	});
+
 	for (int i = 0; i < wordInsNum; i++) {
 		int m = task.words.at(i).at(0);
 		int w = task.words.at(i).at(1);
@@ -131,7 +145,7 @@ void Sampler::fromTask(const TaskPartition& task)
 
 }
 
-Sampler::Sampler(const TaskPartition & task)
+Sampler::Sampler(TaskPartition & task)
 {
 	fromTask(task);
 }
