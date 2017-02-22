@@ -48,8 +48,9 @@ private:
 
 	//SlaveSyncData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
 	
+	void exchangeData(Sampler& currentSampler, int partiton_i, int receiver_PID, int sender_PID);
 	void executePartition();
-
+	
 	void execMaster();
 	void execSlave();
 

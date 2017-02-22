@@ -20,20 +20,17 @@ void Sampler::sample()
 
 
 		//local partial model
-		plusIn2D(nw, -1, w, topic, K);
-		plusIn2D(nd, -1, m, topic, K);
+		plusIn2D(&nw[0], -1, w, topic, K);
+		plusIn2D(&nd[0], -1, m, topic, K);
 
-		if (readvec2D(nw, w, topic, K) < 0) {
-			cout << "pid=" << pid << ", tid=" << partition_id << ", nw negative " << w << ", " << topic << endl;
-			throw 20;
-		}
 		nwsum[topic]--;
+		nwsumDiff[topic]--;
 		//ndsum[m]--;
 
 		for (int k = 0; k < K; k++) {
-			double A = readvec2D(nw, w, k, K);
+			double A = readvec2D<int>(&nw[0], w, k, K);
 			double B = nwsum[k];
-			double C = readvec2D(nd, m, k, K);
+			double C = readvec2D<int>(&nd[0], m, k, K);
 			double D = ndsum[m];
 			p[k] = (A + beta) / (B + Vbeta) *
 				(C + alpha) / (D + Kalpha);
@@ -52,11 +49,10 @@ void Sampler::sample()
 
 
 		//local partial model
-		plusIn2D(nw, 1, w, topic, K);
-		plusIn2D(nd, 1, m, topic, K);
-
-		assert(readvec2D(nw, w, topic, K) >= 0);
+		plusIn2D(&nw[0], 1, w, topic, K);
+		plusIn2D(&nd[0], 1, m, topic, K);
 		nwsum[topic]++;
+		nwsumDiff[topic]++;
 		//ndsum[m]++;
 
 	}
@@ -90,18 +86,19 @@ void Sampler::fromTask(const TaskPartition& task)
 	cout << "*** task ID=" << this->partition_id << ", PID=" << pid << ", partitionM=" << this->partialM << ", partitionV=" << this->partialV << ", offsetM=" << offsetM << ", offsetV=" << offsetV << endl;
 
 
-	this->nd = newVec2D<int>(partialM, K);
-	this->nw = newVec2D<int>(partialV, K);
+	this->nd = vector<int>(partialM*K);// newVec2D<int>(partialM, K);
+	this->nw = vector<int>(partialV*K);// newVec2D<int>(partialV, K);
 
 	this->nwsum = task.nwsum;
 	this->ndsum = task.ndsum;
+	this->nwsumDiff = vector<int>(nwsum.size());
 
 
 	for (int m = 0; m < partialM; m++) {
 		ndsum[m] = task.ndsum.at(m);
 		for (int k = 0; k < K; k++) {
 			int tmp = task.nd.at(m).at(k);
-			writevec2D<int>(tmp, nd, m, k, K);
+			writevec2D<int>(tmp, &nd[0], m, k, K);
 		}
 	}
 
@@ -109,7 +106,7 @@ void Sampler::fromTask(const TaskPartition& task)
 	for (int v = 0; v < task.partitionV; v++) {
 		for (int k = 0; k < K; k++) {
 			int tmp = task.nw.at(v).at(k);
-			writevec2D<int>(tmp, nw, v, k, K);
+			writevec2D<int>(tmp, &nw[0], v, k, K);
 		}
 	}
 
@@ -150,22 +147,12 @@ Sampler::Sampler()
 
 Sampler::~Sampler()
 {
-	delete[] nd;
-	delete[] nw;
+	//delete[] nd;
+	//delete[] nw;
 	delete[] wordSampling;
 
 	//free(nd);
 	//free(nw);
 	//free(wordSampling);
 
-}
-
-void Sampler::update()
-{
-	for (int k = 0; k < K; k++) {
-		nwsum[k] = 0;
-		for (int v = 0; v < partialV; v++) {
-			nwsum[k] = readvec2D(nw, v, k, K);
-		}
-	}
 }

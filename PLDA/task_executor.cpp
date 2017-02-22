@@ -108,6 +108,9 @@ void TaskExecutor::executePartition()
 
 			int partiton_i = (iter_partition + offset) % totalProcessCount;
 			Sampler& sampler = samplers[partiton_i];
+
+			int sum = 0;
+
 			sampler.sample();
 
 
@@ -119,45 +122,26 @@ void TaskExecutor::executePartition()
 				int current_nw_size = sampler.partialV * sampler.K;
 				int next_nw_size = nextSampler.partialV * nextSampler.K;
 
-				//cout << "pid=" << config.processID << ", Exchange nw. send current nw size=" << current_nw_size << " to pid=" << receiver_pid << "." << endl;
-				//cout << "pid=" << config.processID << ", Exchange nw. receive next nw size=" << next_nw_size << " from pid=" << sender_pid << "." << endl;
+				memcpy(&nextSampler.nd[0], &sampler.nd[0], sampler.partialM*sampler.K);
+				MPI_Sendrecv(
+					&sampler.nw[0], current_nw_size, MPI_INT, receiver_pid, datatag,
+					&nextSampler.nw[0], next_nw_size, MPI_INT, sender_pid, datatag,
+					MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
 
-				//vector<int> debug(next_nw_size, 0);
-				//vector<int> debug2(current_nw_size);
-				//memcpy(&debug2[0], sampler.nw, current_nw_size*sizeof(int));
-				memcpy(nextSampler.nd, sampler.nd, sampler.partialM*sampler.K);
-				(MPI_Sendrecv(
-					sampler.nw, current_nw_size, MPI_INT, receiver_pid, datatag,
-					nextSampler.nw, next_nw_size, MPI_INT, sender_pid, datatag,
-					MPI_COMM_WORLD, MPI_STATUSES_IGNORE));
-
-
-				/*if (config.processID == 1) {
-					for (int ti = 0; ti < nextSampler.partialV; ti++) {
-						for (int tk = 0; tk < nextSampler.K; tk++) {
-							cout << readvec2D(nextSampler.nw, ti, tk, nextSampler.K) << " ";
-						}
-						cout << endl;
+				MPI_Allreduce(MPI_IN_PLACE, &sampler.nwsumDiff[0], sampler.K, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+				
+				for (int i = 0; i < nextSampler.K; i++) {
+					nextSampler.nwsum[i] += sampler.nwsumDiff[i];
+					for (auto& s : samplers) {
+						s.nwsum[i] = nextSampler.nwsum[i];
 					}
-
-					cout << "----------------------------" << endl;
-				}*/
-				//memcpy(nextSampler.nw, &debug[0], next_nw_size*sizeof(int));
-
-
-				/*if (config.processID == 1) {
-					for (int ti = 0; ti < nextSampler.partialV; ti++) {
-						for (int tk = 0; tk < nextSampler.K; tk++) {
-							cout << readvec2D(nextSampler.nw, ti, tk, nextSampler.K) << " ";
-						}
-						cout << endl;
-					}
-					cout << "----------------------------" << endl;
-				}*/
-				nextSampler.update();
+					sampler.nwsumDiff[i] = 0;
+				}
 			}
 		}
-		cout << "Iteration " << iter_n << ", elapsed " << timer.elapsed() << endl;
+
+		if (offset == 0)
+			cout << "Iteration " << iter_n << ", elapsed " << timer.elapsed() << endl;
 
 	}
 
@@ -206,8 +190,8 @@ void TaskExecutor::execMaster()
 	}
 	//root self
 	for (auto& sampler : samplers) {
-		importND(model, sampler.nd, sampler.partialM, sampler.offsetM);
-		importNW(model, sampler.nw, sampler.partialV, sampler.offsetV);
+		importND(model, &sampler.nd[0], sampler.partialM, sampler.offsetM);
+		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV);
 	}
 	model->updateSums();
 }
@@ -228,9 +212,9 @@ void TaskExecutor::execSlave()
 		int info[5] = { sampler.partition_id, offsetM, partialM, offsetV, partialV };
 		MPI_Send(&info, 5, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND partial document count = M 
 
-		MPI_Send(sampler.nw, partialV * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+		MPI_Send(&sampler.nw[0], partialV * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
 
-		MPI_Send(sampler.nd, partialM * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+		MPI_Send(&sampler.nd[0], partialM * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
 		//cout << "Partial sent, pid=" << config.processID << endl;
 
 	}

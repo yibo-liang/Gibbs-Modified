@@ -39,10 +39,12 @@ public:
 	int wordInfoSize; // the size of sub vector of the information of a word,
 	int wordInsNum; // number of words in this sampler
 
-	vecFast2D<int> nd;// na[i][j]: number of words in document i assigned to topic j, size M x K
-	vecFast2D<int> nw;// cwt[i][j]: number of instances of word/term i assigned to topic j, size V x K
+	vector<int> nd;// na[i][j]: number of words in document i assigned to topic j, size M x K
+	vector<int> nw;// cwt[i][j]: number of instances of word/term i assigned to topic j, size V x K
 
 	vector<int> nwsum;// nwsum[j]: total number of words assigned to topic j, size K
+	vector<int> nwsumDiff; //nwsum difference
+	
 	vector<int> ndsum;// ndsum[i]: total number of words in document i, size M
 	
 	/* ------ Mapping for update ----*/
@@ -62,8 +64,6 @@ public:
 	Sampler(const Sampler& s);
 	Sampler();
 	~Sampler();
-
-	void update();
 private:
 	/* ------- arrays used for Sampling, allocated only once for speed ----*/
 	friend class Sampler;

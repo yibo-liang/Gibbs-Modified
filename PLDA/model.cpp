@@ -56,12 +56,6 @@ Model::~Model()
 
 void Model::updateSums()
 {
-	for (int m = 0; m < M; m++) {
-		ndsum[m] = 0;
-		for (int k = 0; k < K; k++) {
-			ndsum[m] += nd[m][k];
-		}
-	}
 
 	for (int k = 0; k < K; k++) {
 		nwsum[k] = 0;
