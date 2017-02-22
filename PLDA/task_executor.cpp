@@ -43,7 +43,7 @@ void TaskExecutor::receiveMasterTasks(vector<TaskPartition> & tasks, Model * mod
 
 	this->model = model;
 
-	cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
+	//cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
 }
 
 void TaskExecutor::receiveRemoteTasks()
@@ -61,12 +61,12 @@ void TaskExecutor::receiveRemoteTasks()
 		//this->samplers[task.id].pid = config.processID;
 	}
 
-	cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
+	//cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
 }
 
 using namespace fastVector2D;
 inline void importND(Model * model, vecFast2D<int> nd, int partialM, int offset) {
-	cout << "import ND offset=" << offset << ", partialM=" << partialM << endl;
+	//cout << "import ND offset=" << offset << ", partialM=" << partialM << endl;
 	int K = model->K;
 	for (int m = 0; m < partialM; m++) {
 		for (int k = 0; k < K; k++) {
@@ -76,7 +76,7 @@ inline void importND(Model * model, vecFast2D<int> nd, int partialM, int offset)
 	}
 }
 inline void importNW(Model * model, vecFast2D<int> nw, int partialV, int offset) {
-	cout << "import NW offset=" << offset << ", partialV=" << partialV << endl;
+	//cout << "import NW offset=" << offset << ", partialV=" << partialV << endl;
 	int K = model->K;
 	for (int v = 0; v < partialV; v++) {
 		for (int k = 0; k < K; k++) {
@@ -226,8 +226,16 @@ void TaskExecutor::execSlave()
 void TaskExecutor::execute()
 {
 	MPI_Barrier(MPI_COMM_WORLD);
+
+	cout << "Word load PID=" << this->procNumber;
+	for (auto& s : samplers) {
+		cout << "\t" << s.wordInsNum;
+	}
+	cout << endl;
+	
 	executePartition();
 	if (config.processID == MPIHelper::ROOT) {
+		cin.ignore();
 		execMaster();
 	}
 	else {
