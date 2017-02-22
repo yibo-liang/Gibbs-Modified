@@ -18,9 +18,17 @@ void Sampler::sample()
 		int topic = readvec2D(wordSampling, wi, 2, 3);
 
 
+
 		//local partial model
 		plusIn2D(nw, -1, w, topic, K);
 		plusIn2D(nd, -1, m, topic, K);
+
+		if (readvec2D(nw, w, topic, K) < 0) {
+			cout << "pid=" << pid << ", tid=" << partition_id << ", nw negative " << w << ", " << topic << endl;
+			//throw 20;
+		}
+		assert(readvec2D(nw, w, topic, K) >= 0);
+		assert(w < partialV && w >= 0);
 		nwsum[topic]--;
 		//ndsum[m]--;
 
@@ -49,6 +57,7 @@ void Sampler::sample()
 		plusIn2D(nw, 1, w, topic, K);
 		plusIn2D(nd, 1, m, topic, K);
 
+		assert(readvec2D(nw, w, topic, K) >= 0);
 		nwsum[topic]++;
 		//ndsum[m]++;
 
@@ -75,9 +84,12 @@ void Sampler::fromTask(const TaskPartition& task)
 
 	this->partialM = task.partitionM;
 	this->partialV = task.partitionV;
-
 	this->offsetM = task.offsetM;
 	this->offsetV = task.offsetV;
+
+
+	cout << "*** task ID=" << this->partition_id << ", partitionM=" << this->partialM << ", partitionV=" << this->partialV << ", offsetM=" << offsetM << ", offsetV=" << offsetV << endl;
+
 
 	this->nd = newVec2D<int>(partialM, K);
 	this->nw = newVec2D<int>(partialV, K);

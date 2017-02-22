@@ -42,6 +42,7 @@ void TaskExecutor::receiveMasterTasks(vector<TaskPartition> & tasks, Model * mod
 
 
 	this->model = model;
+
 	cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
 }
 
@@ -65,7 +66,7 @@ void TaskExecutor::receiveRemoteTasks()
 
 using namespace fastVector2D;
 inline void importND(Model * model, vecFast2D<int> nd, int partialM, int offset) {
-	cout << "import nd offset=" << offset << ", partialM=" << partialM << endl;
+	cout << "import ND offset=" << offset << ", partialM=" << partialM << endl;
 	int K = model->K;
 	for (int m = 0; m < partialM; m++) {
 		for (int k = 0; k < K; k++) {
@@ -75,12 +76,15 @@ inline void importND(Model * model, vecFast2D<int> nd, int partialM, int offset)
 	}
 }
 inline void importNW(Model * model, vecFast2D<int> nw, int partialV, int offset) {
-	cout << "import nd offset=" << offset << ", partialM=" << partialV << endl;
+	cout << "import NW offset=" << offset << ", partialV=" << partialV << endl;
 	int K = model->K;
 	for (int v = 0; v < partialV; v++) {
 		for (int k = 0; k < K; k++) {
 			int rv = v + offset;
-			model->nw[rv][k] = readvec2D<int>(nw, v, k, K);
+			int tmp = readvec2D<int>(nw, v, k, K);
+			cout << "v=" << v << ",rv= " << rv << ", k=" << k << ",nw = " << tmp << endl;
+			model->nw[rv][k] = tmp;
+
 		}
 	}
 }
@@ -122,10 +126,10 @@ void TaskExecutor::executePartition()
 				//vector<int> debug2(current_nw_size);
 				//memcpy(&debug2[0], sampler.nw, current_nw_size*sizeof(int));
 
-				MPI_Sendrecv(
+				debug(MPI_Sendrecv(
 					sampler.nw, current_nw_size, MPI_INT, receiver_pid, datatag,
 					nextSampler.nw, next_nw_size, MPI_INT, sender_pid, datatag,
-					MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
+					MPI_COMM_WORLD, MPI_STATUSES_IGNORE));
 
 				//memcpy(nextSampler.nw, &debug[0], next_nw_size*sizeof(int));
 
@@ -172,7 +176,10 @@ void TaskExecutor::execMaster()
 
 				importNW(model, recevied_nw, partialV, offsetV);
 
-				free(recevied_nd);
+				delete[](recevied_nd);
+
+				delete[](recevied_nw);
+
 			}
 		}
 	}
@@ -191,7 +198,7 @@ void TaskExecutor::execSlave()
 	int K = samplers[0].K;
 	for (int i = 0; i < samplers.size(); i++) {
 		auto& sampler = samplers[i];
-		cout << "sending partial nd pid=" << config.processID << ", sampler i=" << i << endl;
+		//cout << "sending partial nd pid=" << config.processID << ", sampler i=" << i << endl;
 		int partialM = sampler.partialM;
 		int partialV = sampler.partialV;
 		int offsetM = sampler.offsetM;
@@ -203,7 +210,7 @@ void TaskExecutor::execSlave()
 		MPI_Send(sampler.nw, partialV * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
 
 		MPI_Send(sampler.nd, partialM * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
-		cout << "Partial sent, pid=" << config.processID << endl;
+		//cout << "Partial sent, pid=" << config.processID << endl;
 
 	}
 }
@@ -213,6 +220,7 @@ void TaskExecutor::execSlave()
 
 void TaskExecutor::execute()
 {
+	MPI_Barrier(MPI_COMM_WORLD);
 	executePartition();
 	if (config.processID == MPIHelper::ROOT) {
 		execMaster();

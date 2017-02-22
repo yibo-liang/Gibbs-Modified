@@ -46,11 +46,11 @@ void TaskGenerator::startMasterJob(
 	for (int proc_n = 0; proc_n < taskGroups.size(); proc_n++) {
 		auto& group = taskGroups[proc_n];
 		if (proc_n == 0) {
-			cout << "send to Master" << endl;
+			//cout << "send to Master" << endl;
 			executor.receiveMasterTasks(group, &model);
 		}
 		else {
-			cout << "send to slave " << proc_n << endl;
+			//cout << "send to slave " << proc_n << endl;
 			mpiSend(group, proc_n);
 		}
 	}
@@ -224,6 +224,10 @@ vector<vector<TaskPartition>> TaskGenerator::generateSimpleTasks(Model &initial_
 			p->nw = vector<vector<int>>(p->partitionV, vector<int>(p->K));
 			p->ndsum = vector<int>(p->partitionM, 0);
 			p->nwsum = vector<int>(p->K, 0);
+
+			cout << "Partition row=" << row << ", col=" << col << endl;
+			cout << "\tSet offsetM=" << p->offsetM << ", offsetV=" << p->offsetV << endl;
+			cout << "\tSet partitionM=" << p->partitionM << ", partitionV=" << p->partitionV << endl;
 
 		}
 	}

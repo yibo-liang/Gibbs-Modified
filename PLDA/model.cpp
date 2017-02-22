@@ -54,8 +54,7 @@ Model::~Model()
 {
 }
 
-void Model::
-updateSums()
+void Model::updateSums()
 {
 	for (int m = 0; m < M; m++) {
 		ndsum[m] = 0;
