@@ -53,6 +53,7 @@ void TaskGenerator::startMasterJob(
 			//cout << "send to slave " << proc_n << endl;
 			mpiSend(group, proc_n);
 		}
+		cout << "send to PID=" << group.at(0).proc_id << endl;
 	}
 
 	cout << "Done." << endl;
@@ -198,9 +199,12 @@ vector<vector<TaskPartition>> TaskGenerator::generateSimpleTasks(Model &initial_
 	for (int row = 0; row < partitions.size(); row++) {
 		vector<TaskPartition> * row_p = &partitions[row];
 		int temp_id = 0;
+
 		for (int col = 0; col < row_p->size(); col++) {
 			TaskPartition * p = &(*row_p)[col];
-			p->id = temp_id;
+			p->proc_id = row;
+			p->partition_id = temp_id;
+
 			temp_id++;
 
 			p->offsetM = nd_partition_offsets[row];
@@ -225,13 +229,30 @@ vector<vector<TaskPartition>> TaskGenerator::generateSimpleTasks(Model &initial_
 			p->ndsum = vector<int>(p->partitionM, 0);
 			p->nwsum = vector<int>(p->K, 0);
 
+			for (int m = 0; m < p->partitionM; m++) {
+				for (int k = 0; k < p->K; k++) {
+					p->nd[m][k] = initial_model.nd[m + p->offsetM][k];
+				}
+				p->ndsum[m] = initial_model.ndsum[m + p->offsetM];
+			}
+
+			for (int v= 0; v < p->partitionV; v++) {
+				for (int k = 0; k < p->K; k++) {
+					p->nw[v][k] = initial_model.nw[v + p->offsetV][k];
+				}
+			}
+
+			for (int k = 0; k < p->K; k++) {
+				p->nwsum[k] = initial_model.nwsum[k];
+			}
+
+
 			cout << "Partition row=" << row << ", col=" << col << endl;
 			cout << "\tSet offsetM=" << p->offsetM << ", offsetV=" << p->offsetV << endl;
 			cout << "\tSet partitionM=" << p->partitionM << ", partitionV=" << p->partitionV << endl;
 
 		}
 	}
-
 	//assign words for each partition
 	for (int doc_i = 0; doc_i < model.M; doc_i++) {
 		Document& doc = corpus.documents.at(doc_i);
@@ -256,10 +277,10 @@ vector<vector<TaskPartition>> TaskGenerator::generateSimpleTasks(Model &initial_
 					z_word })
 				);
 
-			(*partition).nd[partition_doc_i][z_word] += 1;
-			(*partition).nw[partition_w][z_word] += 1;
-			(*partition).nwsum[z_word] += 1;
-			(*partition).ndsum[partition_doc_i] += 1;
+			//(*partition).nd[partition_doc_i][z_word] += 1;
+			//(*partition).nw[partition_w][z_word] += 1;
+			//(*partition).nwsum[z_word] += 1;
+			//(*partition).ndsum[partition_doc_i] += 1;
 		}
 	}
 

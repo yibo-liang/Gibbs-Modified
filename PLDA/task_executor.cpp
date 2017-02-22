@@ -36,8 +36,8 @@ void TaskExecutor::receiveMasterTasks(vector<TaskPartition> & tasks, Model * mod
 	//used only by ROOT
 	this->samplers = vector<Sampler>(tasks.size());
 	for (auto &task : tasks) {
-		this->samplers[task.id].fromTask(task);
-		this->samplers[task.id].pid = config.processID;
+		this->samplers[task.partition_id].fromTask(task);
+		//this->samplers[task.id].pid = config.processID;
 	}
 
 
@@ -57,8 +57,8 @@ void TaskExecutor::receiveRemoteTasks()
 
 	for (auto &task : tasks) {
 		//cout << "Give task to sampler, PID=" << this->procNumber << ", Task id= " << task.id << endl;
-		this->samplers[task.id].fromTask(task);
-		this->samplers[task.id].pid = config.processID;
+		this->samplers[task.partition_id].fromTask(task);
+		//this->samplers[task.id].pid = config.processID;
 	}
 
 	cout << "Proc ID = " << this->procNumber << " Received " << tasks.size() << " tasks" << endl;
@@ -82,7 +82,7 @@ inline void importNW(Model * model, vecFast2D<int> nw, int partialV, int offset)
 		for (int k = 0; k < K; k++) {
 			int rv = v + offset;
 			int tmp = readvec2D<int>(nw, v, k, K);
-			cout << "v=" << v << ",rv= " << rv << ", k=" << k << ",nw = " << tmp << endl;
+			//cout << "v=" << v << ",rv= " << rv << ", k=" << k << ",nw = " << tmp << endl;
 			model->nw[rv][k] = tmp;
 
 		}
@@ -122,18 +122,39 @@ void TaskExecutor::executePartition()
 				//cout << "pid=" << config.processID << ", Exchange nw. send current nw size=" << current_nw_size << " to pid=" << receiver_pid << "." << endl;
 				//cout << "pid=" << config.processID << ", Exchange nw. receive next nw size=" << next_nw_size << " from pid=" << sender_pid << "." << endl;
 
-				//vector<int> debug(next_nw_size);
+				//vector<int> debug(next_nw_size, 0);
 				//vector<int> debug2(current_nw_size);
 				//memcpy(&debug2[0], sampler.nw, current_nw_size*sizeof(int));
-
-				debug(MPI_Sendrecv(
+				memcpy(nextSampler.nd, sampler.nd, sampler.partialM*sampler.K);
+				(MPI_Sendrecv(
 					sampler.nw, current_nw_size, MPI_INT, receiver_pid, datatag,
 					nextSampler.nw, next_nw_size, MPI_INT, sender_pid, datatag,
 					MPI_COMM_WORLD, MPI_STATUSES_IGNORE));
 
+
+				/*if (config.processID == 1) {
+					for (int ti = 0; ti < nextSampler.partialV; ti++) {
+						for (int tk = 0; tk < nextSampler.K; tk++) {
+							cout << readvec2D(nextSampler.nw, ti, tk, nextSampler.K) << " ";
+						}
+						cout << endl;
+					}
+
+					cout << "----------------------------" << endl;
+				}*/
 				//memcpy(nextSampler.nw, &debug[0], next_nw_size*sizeof(int));
 
-				sampler.update();
+
+				/*if (config.processID == 1) {
+					for (int ti = 0; ti < nextSampler.partialV; ti++) {
+						for (int tk = 0; tk < nextSampler.K; tk++) {
+							cout << readvec2D(nextSampler.nw, ti, tk, nextSampler.K) << " ";
+						}
+						cout << endl;
+					}
+					cout << "----------------------------" << endl;
+				}*/
+				nextSampler.update();
 			}
 		}
 		cout << "Iteration " << iter_n << ", elapsed " << timer.elapsed() << endl;

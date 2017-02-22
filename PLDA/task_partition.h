@@ -16,7 +16,8 @@ public:
 
 
 	//K & V both used in sampling for Dirichlet process
-	int id;
+	int partition_id;
+	int proc_id;
 	int K; //topic number
 	int V; //vocabulary size
 
@@ -44,7 +45,8 @@ public:
 
 	//copy
 	TaskPartition(const TaskPartition& t) {
-		this->id = t.id;
+		this->proc_id = t.proc_id;
+		this->partition_id = t.partition_id;
 		this->K = t.K;
 		this->V = t.V;
 
@@ -72,7 +74,8 @@ private:
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)
 	{
-		ar & id;
+		ar & proc_id;
+		ar & partition_id;
 		ar & alpha;
 		ar & beta;
 		ar & K;

@@ -25,10 +25,8 @@ void Sampler::sample()
 
 		if (readvec2D(nw, w, topic, K) < 0) {
 			cout << "pid=" << pid << ", tid=" << partition_id << ", nw negative " << w << ", " << topic << endl;
-			//throw 20;
+			throw 20;
 		}
-		assert(readvec2D(nw, w, topic, K) >= 0);
-		assert(w < partialV && w >= 0);
 		nwsum[topic]--;
 		//ndsum[m]--;
 
@@ -73,7 +71,8 @@ void Sampler::fromTask(const TaskPartition& task)
 	wordInfoSize = 3; //should be 3
 
 
-	this->partition_id = task.id;
+	this->partition_id = task.partition_id;
+	this->pid = task.proc_id;
 
 	this->alpha = task.alpha;
 	this->beta = task.beta;
@@ -88,7 +87,7 @@ void Sampler::fromTask(const TaskPartition& task)
 	this->offsetV = task.offsetV;
 
 
-	cout << "*** task ID=" << this->partition_id << ", partitionM=" << this->partialM << ", partitionV=" << this->partialV << ", offsetM=" << offsetM << ", offsetV=" << offsetV << endl;
+	cout << "*** task ID=" << this->partition_id << ", PID=" << pid << ", partitionM=" << this->partialM << ", partitionV=" << this->partialV << ", offsetM=" << offsetM << ", offsetV=" << offsetV << endl;
 
 
 	this->nd = newVec2D<int>(partialM, K);
@@ -163,13 +162,6 @@ Sampler::~Sampler()
 
 void Sampler::update()
 {
-	for (int m = 0; m < partialM; m++) {
-		ndsum[m] = 0;
-		for (int k = 0; k < K; k++) {
-			ndsum[m] += readvec2D(nd, m, k, K);
-		}
-	}
-
 	for (int k = 0; k < K; k++) {
 		nwsum[k] = 0;
 		for (int v = 0; v < partialV; v++) {
