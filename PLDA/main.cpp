@@ -65,7 +65,8 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		config->hierarchStructure = vm["hierarch"].as<vector<int>>();
 	}
 	if (vm.count("mode")) {
-		config->parallelType = vm["mode"].as<string>() == "CPU" ? P_MPI : P_GPU;
+		config->parallelType = (vm["mode"].as<string>() == "gpu") ? P_GPU : P_MPI;
+		cout << "Using GPU ." <<endl;
 	}
 	else {
 		config->hierarchStructure = vector<int>({ 1 });
@@ -77,12 +78,15 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 
 int master(JobConfig &config) {
 	using namespace std;
+	Timer overall_time;
+	overall_time.reset();
 	TaskGenerator lda_job(config);
 	TaskExecutor executor(config);
 	lda_job.startMasterJob(executor);
 	executor.model->corpus = &lda_job.corpus;
 	executor.execute();
-	cout << "All Job Done.";
+
+	double elapsed = overall_time.elapsed();
 	string result = executor.model->getTopicWords(25);
 	ofstream myfile;
 	myfile.open("result.txt");
@@ -90,6 +94,11 @@ int master(JobConfig &config) {
 	myfile.close();
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	cout << "LDA Gibbs Sampling finished" << endl;
+	cout << "Total time consumed: " << elapsed << " seconds" <<endl;
+	cout << "Average iteration time: " << elapsed / (double)config.iterationNumber << " seconds" << endl;
+	cout << "\nPress ENTER to exit.\n";
+	cin.ignore();
 	return 0;
 }
 

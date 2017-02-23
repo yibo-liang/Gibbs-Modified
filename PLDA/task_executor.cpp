@@ -36,6 +36,7 @@ void TaskExecutor::receiveMasterTasks(vector<TaskPartition> & tasks, Model * mod
 	//used only by ROOT
 	this->samplers = vector<Sampler>(tasks.size());
 	for (auto &task : tasks) {
+		this->samplers[task.partition_id].sampleMode = config.parallelType;
 		this->samplers[task.partition_id].fromTask(task);
 		//this->samplers[task.id].pid = config.processID;
 	}
@@ -57,6 +58,7 @@ void TaskExecutor::receiveRemoteTasks()
 
 	for (auto &task : tasks) {
 		//cout << "Give task to sampler, PID=" << this->procNumber << ", Task id= " << task.id << endl;
+		this->samplers[task.partition_id].sampleMode = config.parallelType;
 		this->samplers[task.partition_id].fromTask(task);
 		//this->samplers[task.id].pid = config.processID;
 	}
@@ -141,10 +143,10 @@ void TaskExecutor::executePartition()
 		}
 
 		if (offset == 0)
-			cout << "Iteration " << iter_n << ", elapsed " << timer.elapsed() << endl;
+			cout << "\rIteration " << iter_n << ", elapsed " << timer.elapsed();
 
 	}
-
+	cout << endl;
 }
 
 void TaskExecutor::execMaster()
@@ -227,15 +229,14 @@ void TaskExecutor::execute()
 {
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	cout << "Word load PID=" << this->procNumber;
-	for (auto& s : samplers) {
-		cout << "\t" << s.wordInsNum;
-	}
-	cout << endl;
+	//cout << "Word load PID=" << this->procNumber;
+	//for (auto& s : samplers) {
+	//	cout << "\t" << s.wordInsNum;
+	//}
+	//cout << endl;
 	
 	executePartition();
 	if (config.processID == MPIHelper::ROOT) {
-		cin.ignore();
 		execMaster();
 	}
 	else {

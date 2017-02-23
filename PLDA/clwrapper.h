@@ -7,13 +7,14 @@
 #include "CL/cl.h"
 #include <tuple>
 
-using deviceInfo = tuple<string, cl_uint, string>;
+using deviceInfo = tuple<string, cl_uint, cl_uint>;
 using platformInfo = tuple<string, cl_uint>;
 
-class clwrapper
+class clWrapper
 {
 public:
-	cl_platform_id platform;
+	bool displayInformation = false;
+
 	vector<cl_platform_id> platforms;
 	vector<cl_device_id> devices;
 	vector<deviceInfo> devicesInformation;
@@ -25,14 +26,17 @@ public:
 	cl_command_queue queue;
 	cl_program program;
 	cl_kernel kernel;
-	vector<cl_mem> buffers;
+
+	vecFast2D<int> partition_offset;
+	vecFast2D<int> partition_word_count;
+	vecFast2D<int> words;
 
 	void benchmark();
 	void initialise();
 	void release();
 
-	clwrapper();
-	~clwrapper();
+	clWrapper();
+	~clWrapper();
 };
 
 

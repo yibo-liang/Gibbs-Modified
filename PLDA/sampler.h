@@ -8,7 +8,7 @@
 #include "task_partition.h"
 #include "slave_sync_data.h"
 
-#include "CL/cl.h"
+#include "clwrapper.h"
 using namespace fastVector2D;
 
 
@@ -32,6 +32,8 @@ public:
 	int V;
 	vecFast2D<int> wordSampling; //size of W * 3 contains [(doc_id, w, z)....]
 
+	vector<int> z;
+
 	//vector<int> vocabOffsetMap;  // [(local v index=>global vocabulary index)]
 	int offsetM; //starting document offset, since an executor only contains a subset of the model, we need an offset to calculate its mapping to the full model;
 	int offsetV;
@@ -52,7 +54,7 @@ public:
 	vector<int> ndsum;// ndsum[i]: total number of words in document i, size M
 
 
-	struct clWrapper cldata;
+	clWrapper opencl;
 
 	/* ------- Methods -----*/
 
@@ -71,7 +73,7 @@ private:
 
 	void sample_MPI();
 
-	void prepare_GPU();
+	void prepare_GPU(TaskPartition & task);
 	void sample_OPENCL();
 	void release_GPU();
 	//inline int mapV(int v); //map from nw array index to global vocabulary id;

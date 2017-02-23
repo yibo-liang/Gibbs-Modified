@@ -19,22 +19,19 @@ void TaskGenerator::startMasterJob(
 	TaskExecutor &executor)
 {
 
-	cout << "Loading Corpus ...";
+	cout << "Loading Corpus ..." << endl;
 	loadCorpus();
-	cout << " Done." << endl;
-	cout << "\t" << corpus.documents.size() << " documents" << endl;
-	cout << "\t" << corpus.totalWordCount << " words in total" << endl;
+	cout << "" << corpus.documents.size() << " documents" << endl;
+	cout << "" << corpus.totalWordCount << " words in total" << endl;
 	cout << "------------------------------" << endl;
 
 	cout << "Initialising LDA Model ... ";
 	model = createInitialModel();
-	cout << "Done." << endl;
 	cout << "------------------------------" << endl;
 
 	cout << "Creating tasks ... " << endl;
 	vector<vector<TaskPartition>> taskGroups = generateSimpleTasks(model);
-	cout << "Done." << endl;
-	cout << "\t" << taskGroups.size() << " task Groups created, each has " << taskGroups.at(0).size() << "tasks" << endl;
+	cout << "" << taskGroups.size() << " task Groups created, each has " << taskGroups.at(0).size() << "tasks" << endl;
 	cout << "------------------------------" << endl;
 	cout << "Sending tasks to workers ...." << endl;
 
@@ -53,10 +50,10 @@ void TaskGenerator::startMasterJob(
 			//cout << "send to slave " << proc_n << endl;
 			mpiSend(group, proc_n);
 		}
-		cout << "send to PID=" << group.at(0).proc_id << endl;
-	}
-
-	cout << "Done." << endl;
+		//cout << "send to PID=" << group.at(0).proc_id << endl;
+	}	
+	cout << "------------------------------" << endl;
+	cout << endl;
 
 }
 
@@ -277,10 +274,6 @@ vector<vector<TaskPartition>> TaskGenerator::generateSimpleTasks(Model &initial_
 					z_word })
 				);
 
-			//(*partition).nd[partition_doc_i][z_word] += 1;
-			//(*partition).nw[partition_w][z_word] += 1;
-			//(*partition).nwsum[z_word] += 1;
-			//(*partition).ndsum[partition_doc_i] += 1;
 		}
 	}
 
