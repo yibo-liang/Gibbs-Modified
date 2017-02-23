@@ -143,7 +143,7 @@ void TaskExecutor::executePartition()
 		}
 
 		if (offset == 0)
-			cout << "\rIteration " << iter_n << ", elapsed " << timer.elapsed();
+			cout << "\rIteration " << iter_n << ", elapsed " << timer.elapsed() << std::flush;
 
 	}
 	cout << endl;
@@ -162,7 +162,7 @@ void TaskExecutor::execMaster()
 		if (i != ROOT) {
 			for (int j = 0; j < config.taskPerProcess; j++) {
 				int info[5];
-				cout << "Master receiving partition from pid=" << i << endl;
+				//cout << "Master receiving partition from pid=" << i << endl;
 				MPI_Recv(&info, 5, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //SEND partial document count = M 
 				int task_id = info[0];
 				int offsetM = info[1];

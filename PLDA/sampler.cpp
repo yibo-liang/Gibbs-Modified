@@ -10,7 +10,7 @@ void Sampler::sample() {
 	}
 }
 
-inline int getPartitionID(vector<size_t> partitionVec, int i) {
+inline int Sampler::getPartitionID(vector<size_t> partitionVec, int i) {
 	if (partitionVec.size() == 1) return 0;
 	for (int j = 1; j < partitionVec.size(); j++) {
 		size_t p = partitionVec[j];
@@ -124,8 +124,8 @@ void Sampler::sample_MPI()
 	double Kalpha = (double)K * alpha;
 
 	for (int wi = 0; wi < wordInsNum; wi++) {
-		int m = readvec2D(wordSampling, wi, 0, 3);
-		int w = readvec2D(wordSampling, wi, 1, 3);
+		int m = readvec2D(wordSampling, wi, 0, 2);
+		int w = readvec2D(wordSampling, wi, 1, 2);
 
 		int topic = z[wi];
 
@@ -244,8 +244,8 @@ void Sampler::fromTask(TaskPartition& task)
 			int w = task.words.at(i).at(1);
 			int task_z = task.words.at(i).at(2);
 
-			writevec2D<int>(m, wordSampling, i, 0, 3);
-			writevec2D<int>(w, wordSampling, i, 1, 3);
+			writevec2D<int>(m, wordSampling, i, 0, 2);
+			writevec2D<int>(w, wordSampling, i, 1, 2);
 			//writevec2D<int>(task_z, wordSampling, i, 2, 3);
 			z.push_back(task_z);
 		}

@@ -72,7 +72,7 @@ private:
 	vector<double> p;
 
 	void sample_MPI();
-
+	inline int getPartitionID(vector<size_t> partitionVec, int i);
 	void prepare_GPU(TaskPartition & task);
 	void sample_OPENCL();
 	void release_GPU();

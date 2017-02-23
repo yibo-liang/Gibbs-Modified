@@ -244,9 +244,9 @@ vector<vector<TaskPartition>> TaskGenerator::generateSimpleTasks(Model &initial_
 			}
 
 
-			cout << "Partition row=" << row << ", col=" << col << endl;
+		/*	cout << "Partition row=" << row << ", col=" << col << endl;
 			cout << "\tSet offsetM=" << p->offsetM << ", offsetV=" << p->offsetV << endl;
-			cout << "\tSet partitionM=" << p->partitionM << ", partitionV=" << p->partitionV << endl;
+			cout << "\tSet partitionM=" << p->partitionM << ", partitionV=" << p->partitionV << endl;*/
 
 		}
 	}

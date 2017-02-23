@@ -64,14 +64,14 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	if (vm.count("hierarch")) {
 		config->hierarchStructure = vm["hierarch"].as<vector<int>>();
 	}
-	if (vm.count("mode")) {
-		config->parallelType = (vm["mode"].as<string>() == "gpu") ? P_GPU : P_MPI;
-		cout << "Using GPU ." <<endl;
-	}
 	else {
 		config->hierarchStructure = vector<int>({ 1 });
 	}
 
+	if (vm.count("mode")) {
+		config->parallelType = (vm["mode"].as<string>() == "gpu") ? P_GPU : P_MPI;
+		cout << "Using GPU ." <<endl;
+	}
 
 	return 0;
 }

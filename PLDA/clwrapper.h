@@ -10,6 +10,7 @@
 using deviceInfo = tuple<string, cl_uint, cl_uint>;
 using platformInfo = tuple<string, cl_uint>;
 
+using namespace fastVector2D;
 class clWrapper
 {
 public:
@@ -27,9 +28,10 @@ public:
 	cl_program program;
 	cl_kernel kernel;
 
-	vecFast2D<int> partition_offset;
-	vecFast2D<int> partition_word_count;
-	vecFast2D<int> words;
+	vecFast2D<int> partition_offset; // size P * P, each is a pointer position offset on buffer 'words'
+	vecFast2D<int> partition_word_count; //
+	vecFast2D<int> words; //words[i]=(m of word_i, w of word_i)
+	int * z; //z[w_i]
 
 	void benchmark();
 	void initialise();
