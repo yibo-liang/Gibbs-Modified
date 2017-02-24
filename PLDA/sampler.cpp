@@ -34,41 +34,41 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	//The number of paritition on nd and nw
 
 	using clpartition = tuple<int, int, int>;
-	int partition_num = partialM > partialV ? partialM : partialV;
+	int partition_num = partialM > partialV ? partialV : partialM;
+	if (partition_num > 256) partition_num = 256;
 	int word_count = wordInsNum;
-	int row_average = word_count / partition_num;
-	int col_average = word_count / partition_num;
+	float row_average = (float)partialM / (float)partition_num;
+	float col_average = (float)partialV / (float)partition_num;
 
-	vector<vector<vector<clpartition>>> parts;
+
+	vector<vector<vector<clpartition>>> parts(
+		partition_num,
+		vector<vector<clpartition>>(
+			partition_num,
+			vector<clpartition>()
+			)
+		);
 	vector<size_t> nd_partition_offsets;
 	vector<size_t> nw_partition_offsets;
 
 	//nd partition offsets
-	int sum = 0;
-	nd_partition_offsets.push_back(0);
+	double sum = 0;
+	//nd_partition_offsets.push_back(0);
+
 	for (int m = 0; m < partialM; m++) {
-		int sum_row = 0;
-		for (int k = 0; k < K; k++) {
-			sum_row += task.nd[m][k];
-		}
-		sum += sum_row;
-		if (sum > row_average) {
-			sum = 0;
+
+		if (m >= sum) {
+			sum += row_average;
 			nd_partition_offsets.push_back(m);
 		}
 	}
 
 	//nw partition offsets
 	sum = 0;
-	nw_partition_offsets.push_back(0);
+	//nw_partition_offsets.push_back(0);
 	for (int v = 0; v < partialV; v++) {
-		int sum_col = 0;
-		for (int k = 0; k < K; k++) {
-			sum_col += task.nw[v][k];
-		}
-		sum += sum_col;
-		if (sum > col_average) {
-			sum = 0;
+		if (v >= sum) {
+			sum += col_average;
 			nw_partition_offsets.push_back(v);
 		}
 	}
@@ -94,22 +94,45 @@ void Sampler::prepare_GPU(TaskPartition & task)
 		vector<vector<clpartition>> * part_row = &parts[row];
 		for (int col = 0; col < partition_num; col++) {
 			vector<clpartition> * p = &(*part_row)[col];
-			writevec2D<int>(wi, opencl.partition_offset, row, col, partition_num);
-			writevec2D<int>(p->size(), opencl.partition_offset, row, col, partition_num);
+			writevec2D<int>(wi * 2, opencl.partition_offset, row, col, partition_num);
+			writevec2D<int>(p->size(), opencl.partition_word_count, row, col, partition_num);
 			for (int i = 0; i < p->size(); i++) {
 				clpartition * part = &(*p)[i];
 				int m = std::get<0>(*part);
 				int w = std::get<1>(*part);
-				int z = std::get<2>(*part);
+				int z_tmp = std::get<2>(*part);
 
+				writevec2D<int>(m, wordSampling, i, 0, 2);
+				writevec2D<int>(w, wordSampling, i, 1, 2);
+				//writevec2D<int>(task_z, wordSampling, i, 2, 3);
+				z.push_back(z_tmp);
+				wi++;
 			}
 		}
 	}
 
+	opencl.partition_number = partition_num;
+
+	opencl.V = V;
+	opencl.K = K;
+	opencl.alpha = alpha;
+	opencl.beta = beta;
+	opencl.wordCount = wordInsNum;
+	opencl.partialV = partialV;
+	opencl.M = partialM;
+
+	opencl.words = wordSampling;
+	opencl.z = &z[0];
+	opencl.nd = &nd[0];
+	opencl.nw = &nw[0];
+	opencl.nwsum = &nwsum[0];
+	opencl.ndsum = &ndsum[0];
+
+	opencl.initialise();
 }
 
 void Sampler::sample_OPENCL() {
-
+	opencl.sample();
 }
 
 void Sampler::sample_MPI()
@@ -120,7 +143,7 @@ void Sampler::sample_MPI()
 	/* ------------- initialising sync buffer ------------  */
 	/* ------------- Sample start ------------  */
 
-	double Vbeta = (double)partialV * beta;
+	double Vbeta = (double)V * beta;
 	double Kalpha = (double)K * alpha;
 
 	for (int wi = 0; wi < wordInsNum; wi++) {
@@ -231,8 +254,7 @@ void Sampler::fromTask(TaskPartition& task)
 		if (pid == 0) {
 			opencl.displayInformation = true;
 		}
-		opencl.initialise();
-
+		prepare_GPU(task);
 	}
 	else {
 
@@ -270,6 +292,7 @@ Sampler::~Sampler()
 {
 	//delete[] nd;
 	//delete[] nw;
+
 	delete[] wordSampling;
 
 	//free(nd);

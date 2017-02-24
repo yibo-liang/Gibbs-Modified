@@ -114,8 +114,5 @@
     <None Include="cl_lib\rng_simplified.cl">
       <Filter>Source Files\kernel</Filter>
     </None>
-    <None Include="ndsum_allreduce.cl">
-      <Filter>Source Files\kernel</Filter>
-    </None>
   </ItemGroup>
 </Project>
