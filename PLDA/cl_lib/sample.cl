@@ -19,7 +19,7 @@ __kernel void sample(
 
 	/* The flollowing 5 const are replaced by using Boost::format at Runtime */
 	const int total_work_item = %d; //total amount of work item (parallel thread count)
-	float p[%d];
+	__local float p[%d];
 	const int K = %d;
 	const int V = %d;
 	const float alpha = %.6f;
@@ -48,7 +48,7 @@ __kernel void sample(
 	float Kalpha = (float)K * alpha;
 
 	mwc64x_state_t rng;
-	MWC64X_SeedStreams(&rng, word_count * K * total_work_item, word_count * K);
+	//MWC64X_SeedStreams(&rng, word_count * K * total_work_item, word_count * K);
 
 	
 	int k;
@@ -58,8 +58,8 @@ __kernel void sample(
 	}
 
 	int wi;
-	int max_wi = offset + 2 * word_count;
-	int z_i = 0;
+	int max_wi = offset * 2 + 2 * word_count;
+	int z_i = offset;
 	for (wi = offset; wi < max_wi; wi = wi + 2) {
 
 		m = w[wi];

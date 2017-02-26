@@ -86,16 +86,17 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	}
 
 	//iterate all paritions, flatten the partition matrix, but remember the partition structure by using offset
-	opencl.partition_offset = newVec2D<int>(partition_num, partition_num);
-	opencl.partition_word_count = newVec2D<int>(partition_num, partition_num);
+	opencl.partition_offset = vector<int>(partition_num * partition_num);//newVec2D<int>(partition_num, partition_num);
+	opencl.partition_word_count = vector<int>(partition_num * partition_num);//newVec2D<int>(partition_num, partition_num);
 	opencl.words = newVec2D<int>(wordInsNum, 2);
 	int wi = 0;
 	for (int row = 0; row < partition_num; row++) {
 		vector<vector<clpartition>> * part_row = &parts[row];
 		for (int col = 0; col < partition_num; col++) {
 			vector<clpartition> * p = &(*part_row)[col];
-			writevec2D<int>(wi * 2, opencl.partition_offset, row, col, partition_num);
-			writevec2D<int>(p->size(), opencl.partition_word_count, row, col, partition_num);
+			
+			writevec2D<int>(wi, &opencl.partition_offset[0], row, col, partition_num);
+			writevec2D<int>(p->size(), &opencl.partition_word_count[0], row, col, partition_num);
 			for (int i = 0; i < p->size(); i++) {
 				clpartition * part = &(*p)[i];
 				int m = std::get<0>(*part);

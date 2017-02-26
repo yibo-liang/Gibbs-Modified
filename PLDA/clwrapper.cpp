@@ -199,10 +199,10 @@ void clWrapper::prepareSampling()
 		writeBuffer(memoryObjects[MEM_iter], &iter, 1);
 
 		memoryObjects[MEM_partition_offset] = clCreateBuffer(context, CL_MEM_READ_ONLY, partition_number * partition_number * sizeof(int), NULL, &ret);
-		writeBuffer(memoryObjects[MEM_partition_offset], partition_offset, partition_number * partition_number);
+		writeBuffer(memoryObjects[MEM_partition_offset], &partition_offset[0], partition_number * partition_number);
 
 		memoryObjects[MEM_partition_word_count] = clCreateBuffer(context, CL_MEM_READ_ONLY, partition_number * partition_number * sizeof(int), NULL, &ret);
-		writeBuffer(memoryObjects[MEM_partition_word_count], partition_word_count, partition_number * partition_number);
+		writeBuffer(memoryObjects[MEM_partition_word_count], &partition_word_count[0], partition_number * partition_number);
 
 		memoryObjects[MEM_w] = clCreateBuffer(context, CL_MEM_READ_ONLY, wordCount * 2 * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_w], words, wordCount * 2);
@@ -418,6 +418,6 @@ clWrapper::clWrapper()
 clWrapper::~clWrapper()
 {
 	release();
-	delete[] partition_word_count;
-	delete[] partition_offset;
+	//delete[] partition_word_count;
+	//delete[] partition_offset;
 }

@@ -46,8 +46,8 @@ public:
 	cl_kernel kernels[2];
 	cl_mem memoryObjects[10];
 
-	vecFast2D<int> partition_offset; // size P * P, each is a pointer position offset on buffer 'words'
-	vecFast2D<int> partition_word_count; //
+	vector<int> partition_offset; // size P * P, each is a pointer position offset on buffer 'words'
+	vector<int> partition_word_count; //
 	int partition_number;
 	int wordCount;
 	vecFast2D<int> words; //words[i]=(m of word_i, w of word_i)
