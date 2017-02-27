@@ -68,18 +68,21 @@ __kernel void sample(
 	int sample_count = 0;
 	int swi = pid + sample_count * group_total_p; //swi, the word id being sampled by this work item
 	//sampling start
-	int z_i = offset;
-
-	debug[get_global_id(0)] = word_count;
+	int z_i = offset + swi;
 
 
+
+	//debug[get_global_id(0)] = get_global_id(0);
 	while (swi < word_count) {
-		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+		//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 		int wi = (swi + offset) * 2;
 		int m = w[wi];
 		int v = w[wi + 1];
 
+
+
 		int topic = z[z_i];
+		
 		int old_topic = topic;
 		int k;
 		for (k = 0; k < K; k++) {
@@ -90,7 +93,7 @@ __kernel void sample(
 				C = nd[k + m * K];
 			}
 			else {
-				A = nw[k + v*K] - 1;
+				A = nw[k + v * K] - 1;
 				B = nwsum_local[k] - 1;
 				C = nd[k + m * K] - 1;
 			}
@@ -113,9 +116,15 @@ __kernel void sample(
 			atomic_dec(&nw[v*K + old_topic]);
 			atomic_dec(&nwsum_local[old_topic]);
 
+
 			atomic_inc(&nd[m*K + topic]);
 			atomic_inc(&nw[v*K + topic]);
 			atomic_inc(&nwsum_local[topic]);
+
+			atomic_dec(&debug[v*K + old_topic]);
+			atomic_inc(&debug[v*K + topic]);
+
+			
 
 			z[z_i] = topic;
 		}
@@ -125,11 +134,15 @@ __kernel void sample(
 		swi = pid + sample_count * group_total_p;
 	}; //exit if there is more workitem than words to sample
 
+	/*if (debug[get_global_id(0)] == get_global_id(0)) {
+		debug[pid + group_id * K] = nwsum_unsync[pid + group_id * K];
+	}*/
 
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 	//copy nwsum to global
 	if (pid < K) {
-		nwsum_unsync[pid] = nwsum_local[pid];
+		nwsum_unsync[pid + group_id * K] = nwsum_local[pid];
+
 	}
 
 }

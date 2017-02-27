@@ -95,7 +95,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	//iterate all paritions, flatten the partition matrix, but remember the partition structure by using offset
 	opencl.partition_offset = vector<int>(partition_num * partition_num);//newVec2D<int>(partition_num, partition_num);
 	opencl.partition_word_count = vector<int>(partition_num * partition_num);//newVec2D<int>(partition_num, partition_num);
-	opencl.words = newVec2D<int>(wordInsNum, 2);
+	//opencl.words;
 	int wi = 0;
 	for (int row = 0; row < partition_num; row++) {
 		vector<vector<clpartition>> * part_row = &parts[row];
@@ -110,8 +110,9 @@ void Sampler::prepare_GPU(TaskPartition & task)
 				int w = std::get<1>(*part);
 				int z_tmp = std::get<2>(*part);
 
-				writevec2D<int>(m, wordSampling, i, 0, 2);
-				writevec2D<int>(w, wordSampling, i, 1, 2);
+				writevec2D<int>(m, wordSampling, wi, 0, 2);
+				writevec2D<int>(w, wordSampling, wi, 1, 2);
+				//cout << "wi="<<wi<< ", m=" << m << ", w=" << w <<endl;
 				//writevec2D<int>(task_z, wordSampling, i, 2, 3);
 				z.push_back(z_tmp);
 				wi++;
@@ -258,6 +259,9 @@ void Sampler::fromTask(TaskPartition& task)
 
 
 
+	//std::sort(task.words.begin(), task.words.end(), [](const vector<int>& w1, const vector<int>& w2) {
+	//	return w1.at(1) < w2.at(1);
+	//});
 	if (sampleMode == P_GPU) {
 		if (pid == 0) {
 			opencl.displayInformation = true;
@@ -266,9 +270,6 @@ void Sampler::fromTask(TaskPartition& task)
 	}
 	else {
 
-		std::sort(task.words.begin(), task.words.end(), [](const vector<int>& w1, const vector<int>& w2) {
-			return w1.at(1) < w2.at(1);
-		});
 		for (int i = 0; i < wordInsNum; i++) {
 			int m = task.words.at(i).at(0);
 			int w = task.words.at(i).at(1);

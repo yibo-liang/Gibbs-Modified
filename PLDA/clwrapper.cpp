@@ -227,7 +227,7 @@ void clWrapper::prepareSampling()
 		memoryObjects[MEM_nwsum_global] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_nwsum_global], nwsum, K);
 
-		int debug_size = 1024 * partition_number;
+		int debug_size = V * K;
 		vector<int> temp2(debug_size, 0);
 		memoryObjects[MEM_DEBUG] = clCreateBuffer(context, CL_MEM_READ_WRITE, debug_size * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_DEBUG], &temp2[0], debug_size);
@@ -413,23 +413,27 @@ void clWrapper::sample()
 	for (int i = 0; i < partition_number; i++) {
 		ret = clEnqueueNDRangeKernel(command_queue, kernels[SAMPLING_KERNEL], 1, NULL,
 			&global_item_size, &local_workgroup_dim, 0, NULL, NULL);
-		//ret = clEnqueueNDRangeKernel(command_queue, kernels[REDUCE_KERNEL], 1, NULL,
-		//	&local_workgroup_dim, &local_workgroup_dim, 0, NULL, NULL);
+		ret = clEnqueueNDRangeKernel(command_queue, kernels[REDUCE_KERNEL], 1, NULL,
+			&local_workgroup_dim, &local_workgroup_dim, 0, NULL, NULL);
 
-
-		clFinish(command_queue);
-		int debug_size = global_item_size;
-		vector<int> temp(debug_size, 0);
-		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
-		cout << "One part done" << endl;
-		//copy result from device
-		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nw], CL_TRUE, 0, partialV * K * sizeof(int), nw, 0, NULL, NULL);
-		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nwsum_global], CL_TRUE, 0, K * sizeof(int), nwsum, 0, NULL, NULL);
-		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount * sizeof(int), z, 0, NULL, NULL);
-		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K * sizeof(int), nd, 0, NULL, NULL);
 	}
 
 
+	int debug_size = V * K;
+	vector<int> temp(debug_size, 0);
+	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
+	cout << "One part done" << endl;
+	int sum = 0;
+	for (int i = 0; i < debug_size; i++) {
+		sum += temp[i];
+	}
+	cout << "debug sum=" << sum <<endl;
+
+	//copy result from device
+	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nw], CL_TRUE, 0, partialV * K * sizeof(int), nw, 0, NULL, NULL);
+	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nwsum_global], CL_TRUE, 0, K * sizeof(int), nwsum, 0, NULL, NULL);
+	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount * sizeof(int), z, 0, NULL, NULL);
+	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K * sizeof(int), nd, 0, NULL, NULL);
 
 }
 
