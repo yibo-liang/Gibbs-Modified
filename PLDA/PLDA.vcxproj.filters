@@ -117,5 +117,8 @@
     <None Include="cl_lib\lda_sample.cl">
       <Filter>Source Files\kernel</Filter>
     </None>
+    <None Include="cl_lib\debug.cl">
+      <Filter>Source Files\kernel</Filter>
+    </None>
   </ItemGroup>
 </Project>

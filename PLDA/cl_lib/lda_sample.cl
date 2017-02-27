@@ -1,4 +1,9 @@
 
+float mwcReadPseudoRandomValue(mwc64x_state_t* rng) {
+	return (1.0f * MWC64X_NextUint(rng)) / (float)(0xffffffff);	// normalized to 1.0
+}
+
+
 __kernel void sample(
 
 	__global int * _iter_partition, //iteration number
@@ -48,8 +53,7 @@ __kernel void sample(
 	int offset_index = col + row * Y;
 	int offset = partition_offset[offset_index];
 	int word_count = partition_word_count[offset_index];
-	debug[get_global_id(0)] = get_global_id(0);
-
+	
 
 	//copy nwsum to local
 	if (pid < K) { //assume that local work item will always be more than K
@@ -59,12 +63,16 @@ __kernel void sample(
 
 
 	mwc64x_state_t rng;
-	MWC64X_SeedStreams(&rng, group_total_p * Y, word_count * K);
+	MWC64X_SeedStreams(&rng, get_global_id(0) * K, word_count * K);
 
 	int sample_count = 0;
 	int swi = pid + sample_count * group_total_p; //swi, the word id being sampled by this work item
 	//sampling start
 	int z_i = offset;
+
+	debug[get_global_id(0)] = word_count;
+
+
 	while (swi < word_count) {
 		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 		int wi = (swi + offset) * 2;
@@ -93,7 +101,7 @@ __kernel void sample(
 		for (k = 1; k < K; k++) {
 			p[k] += p[k - 1];
 		}
-		float u = ((float)MWC64X_NextUint(&rng) / (float)4294967296) * p[K - 1];
+		float u = mwcReadPseudoRandomValue(&rng) * p[K - 1];
 		for (topic = 0; topic < K; topic++) {
 			if (p[topic] >= u) {
 				break;
@@ -121,7 +129,7 @@ __kernel void sample(
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 	//copy nwsum to global
 	if (pid < K) {
-		nwsum_global[pid] = nwsum_local[pid];
+		nwsum_unsync[pid] = nwsum_local[pid];
 	}
 
 }

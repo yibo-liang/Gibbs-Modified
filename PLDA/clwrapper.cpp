@@ -194,7 +194,8 @@ void clWrapper::prepareSampling()
 
 	}
 	// Create memory buffers on the device for each vector 
-	{	int iter = 0;
+	{
+		int iter = 0;
 		memoryObjects[MEM_iter] = clCreateBuffer(context, CL_MEM_READ_WRITE, 1 * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_iter], &iter, 1);
 
@@ -226,7 +227,7 @@ void clWrapper::prepareSampling()
 		memoryObjects[MEM_nwsum_global] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_nwsum_global], nwsum, K);
 
-		int debug_size = 8192;
+		int debug_size = 1024 * partition_number;
 		vector<int> temp2(debug_size, 0);
 		memoryObjects[MEM_DEBUG] = clCreateBuffer(context, CL_MEM_READ_WRITE, debug_size * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_DEBUG], &temp2[0], debug_size);
@@ -244,7 +245,7 @@ void clWrapper::prepareSampling()
 		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 6, sizeof(cl_mem), (void *)&memoryObjects[MEM_nw]);
 		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 7, sizeof(cl_mem), (void *)&memoryObjects[MEM_ndsum]);
 		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 8, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_unsync]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 9,  K * sizeof(int), NULL);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 9, K * sizeof(int), NULL);
 		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 10, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_global]);
 		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 11, sizeof(cl_mem), (void *)&memoryObjects[MEM_DEBUG]);
 
@@ -382,53 +383,52 @@ void clWrapper::release()
 	ret = clReleaseKernel(kernels[REDUCE_KERNEL]);
 
 	ret = clReleaseProgram(program);
-	
+
 	for (int i = 0; i < 10; i++) {
 		ret = clReleaseMemObject(memoryObjects[i]);
 	}
-	
+
 	ret = clReleaseCommandQueue(command_queue);
 	ret = clReleaseContext(context);
 	cout << "All resources released." << endl;
 }
 
 inline size_t ceilUpToMultiple(size_t num, size_t base) {
-	
+
 	size_t result = ((num / base) + 1) * base;
 	return result;
-	
+
 }
 
 void clWrapper::sample()
 {
-	size_t local_workgroup_dim = 512;
+	size_t local_workgroup_dim = 1024;
 	cl_int ret;
-	ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE,
-		sizeof(size_t), &local_workgroup_dim, NULL);
+	ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &local_workgroup_dim, NULL);
 
 
 
-	size_t global_item_size = local_workgroup_dim * 8;
+	size_t global_item_size = local_workgroup_dim * partition_number;
 	//sample all diagonally
 	for (int i = 0; i < partition_number; i++) {
 		ret = clEnqueueNDRangeKernel(command_queue, kernels[SAMPLING_KERNEL], 1, NULL,
 			&global_item_size, &local_workgroup_dim, 0, NULL, NULL);
-		ret = clEnqueueNDRangeKernel(command_queue, kernels[REDUCE_KERNEL], 1, NULL,
-			&local_workgroup_dim, &local_workgroup_dim, 0, NULL, NULL);
+		//ret = clEnqueueNDRangeKernel(command_queue, kernels[REDUCE_KERNEL], 1, NULL,
+		//	&local_workgroup_dim, &local_workgroup_dim, 0, NULL, NULL);
 
 
 		clFinish(command_queue);
-		int debug_size = 8192;
+		int debug_size = global_item_size;
 		vector<int> temp(debug_size, 0);
-		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size, &temp[0], 0, NULL, NULL);
+		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
 		cout << "One part done" << endl;
+		//copy result from device
+		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nw], CL_TRUE, 0, partialV * K * sizeof(int), nw, 0, NULL, NULL);
+		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nwsum_global], CL_TRUE, 0, K * sizeof(int), nwsum, 0, NULL, NULL);
+		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount * sizeof(int), z, 0, NULL, NULL);
+		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K * sizeof(int), nd, 0, NULL, NULL);
 	}
 
-	//copy result from device
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K, nd, 0, NULL, NULL);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nw], CL_TRUE, 0, partialV * K, nw, 0, NULL, NULL);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nwsum_global], CL_TRUE, 0, K, nwsum, 0, NULL, NULL);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount, z, 0, NULL, NULL);
 
 
 }
