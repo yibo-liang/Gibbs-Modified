@@ -201,6 +201,7 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
+    <None Include="cl_lib\lda_sample.cl" />
     <None Include="cl_lib\rng_simplified.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
