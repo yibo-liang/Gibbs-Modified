@@ -156,8 +156,8 @@ void clWrapper::prepareSampling()
 	string sampling_kernel = read_file("cl_lib/lda_sample.cl");
 
 	boost::format sampleKernelFormmater = boost::format(sampling_kernel)
-		% partition_number % K % K % V % M % alpha % beta //kernel sample
-		% K % partition_number;  //
+		% partition_root_size % K % K % V % M % alpha % beta //kernel sample
+		% K % partition_root_size;  //
 
 	sampling_kernel = rng_kernel + sampleKernelFormmater.str();
 	const char * kernel_source = sampling_kernel.c_str();
@@ -199,11 +199,11 @@ void clWrapper::prepareSampling()
 		memoryObjects[MEM_iter] = clCreateBuffer(context, CL_MEM_READ_WRITE, 1 * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_iter], &iter, 1);
 
-		memoryObjects[MEM_partition_offset] = clCreateBuffer(context, CL_MEM_READ_ONLY, partition_number * partition_number * sizeof(int), NULL, &ret);
-		writeBuffer(memoryObjects[MEM_partition_offset], &partition_offset[0], partition_number * partition_number);
+		memoryObjects[MEM_partition_offset] = clCreateBuffer(context, CL_MEM_READ_ONLY, partition_root_size * partition_root_size * sizeof(int), NULL, &ret);
+		writeBuffer(memoryObjects[MEM_partition_offset], &partition_offset[0], partition_root_size * partition_root_size);
 
-		memoryObjects[MEM_partition_word_count] = clCreateBuffer(context, CL_MEM_READ_ONLY, partition_number * partition_number * sizeof(int), NULL, &ret);
-		writeBuffer(memoryObjects[MEM_partition_word_count], &partition_word_count[0], partition_number * partition_number);
+		memoryObjects[MEM_partition_word_count] = clCreateBuffer(context, CL_MEM_READ_ONLY, partition_root_size * partition_root_size * sizeof(int), NULL, &ret);
+		writeBuffer(memoryObjects[MEM_partition_word_count], &partition_word_count[0], partition_root_size * partition_root_size);
 
 		memoryObjects[MEM_w] = clCreateBuffer(context, CL_MEM_READ_ONLY, wordCount * 2 * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_w], words, wordCount * 2);
@@ -220,14 +220,14 @@ void clWrapper::prepareSampling()
 		memoryObjects[MEM_ndsum] = clCreateBuffer(context, CL_MEM_READ_ONLY, M * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_ndsum], ndsum, M);
 
-		memoryObjects[MEM_nwsum_unsync] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * partition_number * sizeof(int), NULL, &ret);
-		vector<int> temp(K* partition_number, 0);
-		writeBuffer(memoryObjects[MEM_nwsum_unsync], &temp[0], K * partition_number);
+		memoryObjects[MEM_nwsum_unsync] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * partition_root_size * sizeof(int), NULL, &ret);
+		vector<int> temp(K* partition_root_size, 0);
+		writeBuffer(memoryObjects[MEM_nwsum_unsync], &temp[0], K * partition_root_size);
 
 		memoryObjects[MEM_nwsum_global] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_nwsum_global], nwsum, K);
 
-		int debug_size = V * K;
+		int debug_size = 1024 * partition_root_size;
 		vector<int> temp2(debug_size, 0);
 		memoryObjects[MEM_DEBUG] = clCreateBuffer(context, CL_MEM_READ_WRITE, debug_size * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_DEBUG], &temp2[0], debug_size);
@@ -294,7 +294,8 @@ void clWrapper::initialise()
 	}
 
 	/* Save all platform information, and enumerate device on each platform */
-	std::cout << "Platforms:" << std::endl;
+	if (displayInformation)
+		std::cout << "Platforms:" << std::endl;
 	for (cl_uint i = 0; i < num_platforms; ++i) {
 
 		char platformProfile[PlatformProfileLen];
@@ -385,11 +386,14 @@ void clWrapper::release()
 	ret = clReleaseProgram(program);
 
 	for (int i = 0; i < 10; i++) {
+		if (i == MEM_nwsum_local)continue;
 		ret = clReleaseMemObject(memoryObjects[i]);
 	}
 
 	ret = clReleaseCommandQueue(command_queue);
 	ret = clReleaseContext(context);
+
+
 	cout << "All resources released." << endl;
 }
 
@@ -402,40 +406,46 @@ inline size_t ceilUpToMultiple(size_t num, size_t base) {
 
 void clWrapper::sample()
 {
-	size_t local_workgroup_dim = 1024;
+	size_t local_workgroup_dim = 32;
 	cl_int ret;
-	ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &local_workgroup_dim, NULL);
+	//ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &local_workgroup_dim, NULL);
 
 
 
-	size_t global_item_size = local_workgroup_dim * partition_number;
+	size_t global_item_size = local_workgroup_dim * partition_root_size;
 	//sample all diagonally
-	for (int i = 0; i < partition_number; i++) {
+
+
+	for (int i = 0; i < partition_root_size; i++) {
+
 		ret = clEnqueueNDRangeKernel(command_queue, kernels[SAMPLING_KERNEL], 1, NULL,
-			&global_item_size, &local_workgroup_dim, 0, NULL, NULL);
+				&global_item_size, &local_workgroup_dim, 0, NULL, NULL);
+		clFinish(command_queue);
 		ret = clEnqueueNDRangeKernel(command_queue, kernels[REDUCE_KERNEL], 1, NULL,
 			&local_workgroup_dim, &local_workgroup_dim, 0, NULL, NULL);
+	
+	/*	int debug_size = global_item_size;
+		vector<int> temp(debug_size, 0);
+		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
+
+*/
 
 	}
-
-
-	int debug_size = V * K;
-	vector<int> temp(debug_size, 0);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
-	cout << "One part done" << endl;
-	int sum = 0;
-	for (int i = 0; i < debug_size; i++) {
-		sum += temp[i];
-	}
-	cout << "debug sum=" << sum <<endl;
-
-	//copy result from device
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nw], CL_TRUE, 0, partialV * K * sizeof(int), nw, 0, NULL, NULL);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nwsum_global], CL_TRUE, 0, K * sizeof(int), nwsum, 0, NULL, NULL);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount * sizeof(int), z, 0, NULL, NULL);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K * sizeof(int), nd, 0, NULL, NULL);
 
 }
+
+void clWrapper::readFromDevice()
+{
+
+	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nw], CL_TRUE, 0, partialV * K * sizeof(int), nw, 0, NULL, NULL));
+	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nwsum_global], CL_TRUE, 0, K * sizeof(int), nwsum, 0, NULL, NULL));
+	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount * sizeof(int), z, 0, NULL, NULL));
+	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K * sizeof(int), nd, 0, NULL, NULL));
+
+}
+
+
+
 
 clWrapper::clWrapper()
 {
@@ -444,7 +454,11 @@ clWrapper::clWrapper()
 
 clWrapper::~clWrapper()
 {
-	release();
+	platforms.clear();
+	devices.clear();
+	devicesInformation.clear();
+	platformInformation.clear();
+	//release();
 	//delete[] partition_word_count;
 	//delete[] partition_offset;
 }

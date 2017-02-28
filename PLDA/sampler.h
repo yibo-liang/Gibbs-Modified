@@ -26,11 +26,13 @@ public:
 	*/
 	int sampleMode = P_MPI;
 
+	int siblingSize = 1;
+
 	int pid;
 	int partition_id;
 	int K;
 	int V;
-	vecFast2D<int> wordSampling; //size of W * 3 contains [(doc_id, w, z)....]
+	vector<int> wordSampling; //size of W * 3 contains [(doc_id, w, z)....]
 
 	vector<int> z;
 
@@ -65,6 +67,9 @@ public:
 	Sampler(TaskPartition& task);
 	Sampler(const Sampler& s);
 	Sampler();
+
+	void syncDevice();
+	void release_GPU();
 	~Sampler();
 private:
 	/* ------- arrays used for Sampling, allocated only once for speed ----*/
@@ -72,10 +77,9 @@ private:
 	vector<double> p;
 
 	void sample_MPI();
-	inline int getPartitionID(vector<size_t> partitionVec, int i);
+	inline int getPartitionID(vector<int> partitionVec, int i);
 	void prepare_GPU(TaskPartition & task);
 	void sample_OPENCL();
-	void release_GPU();
 	//inline int mapV(int v); //map from nw array index to global vocabulary id;
 
 };

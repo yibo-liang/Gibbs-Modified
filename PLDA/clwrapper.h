@@ -28,8 +28,8 @@ public:
 	const int MEM_nw = 6;
 	const int MEM_ndsum = 7;
 	const int MEM_nwsum_unsync = 8;
-	const int MEM_nwsum_global = 9;
-	const int MEM_nwsum_local = 10;
+	const int MEM_nwsum_local = 9;
+	const int MEM_nwsum_global = 10;
 
 	const int MEM_DEBUG = 11;
 
@@ -51,7 +51,8 @@ public:
 
 	vector<int> partition_offset; // size P * P, each is a pointer position offset on buffer 'words'
 	vector<int> partition_word_count; //
-	int partition_number;
+	
+	int partition_root_size;
 	int wordCount;
 	vecFast2D<int> words; //words[i]=(m of word_i, w of word_i)
 
@@ -72,6 +73,7 @@ public:
 	void initialise();
 	void release();
 	void sample();
+	void readFromDevice();
 
 	clWrapper();
 	~clWrapper();

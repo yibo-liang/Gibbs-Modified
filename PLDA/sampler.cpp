@@ -10,10 +10,10 @@ void Sampler::sample() {
 	}
 }
 
-inline int Sampler::getPartitionID(vector<size_t> partitionVec, int i) {
+inline int Sampler::getPartitionID(vector<int> partitionVec, int i) {
 	if (partitionVec.size() == 1) return 0;
 	for (int j = 1; j < partitionVec.size(); j++) {
-		size_t p = partitionVec[j];
+		int p = partitionVec.at(j);
 		if (i < p) {
 			return j - 1;
 		}
@@ -34,7 +34,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	//The number of paritition on nd and nw
 
 	using clpartition = tuple<int, int, int>;
-	int partition_num = 8;
+	int partition_num = 256;
 	int word_count = wordInsNum;
 	float row_average = (float)word_count / (float)partition_num;
 	float col_average = (float)word_count / (float)partition_num;
@@ -47,8 +47,8 @@ void Sampler::prepare_GPU(TaskPartition & task)
 			vector<clpartition>()
 			)
 		);
-	vector<size_t> nd_partition_offsets;
-	vector<size_t> nw_partition_offsets;
+	vector<int> nd_partition_offsets;
+	vector<int> nw_partition_offsets;
 
 	//nd partition offsets
 	double sum = 0;
@@ -89,7 +89,8 @@ void Sampler::prepare_GPU(TaskPartition & task)
 
 		int col = getPartitionID(nw_partition_offsets, w);
 		int row = getPartitionID(nd_partition_offsets, m);
-		parts[row][col].push_back(clpartition(m, w, task_z));
+
+		parts.at(row).at(col).push_back(clpartition(m, w, task_z));
 	}
 
 	//iterate all paritions, flatten the partition matrix, but remember the partition structure by using offset
@@ -110,8 +111,8 @@ void Sampler::prepare_GPU(TaskPartition & task)
 				int w = std::get<1>(*part);
 				int z_tmp = std::get<2>(*part);
 
-				writevec2D<int>(m, wordSampling, wi, 0, 2);
-				writevec2D<int>(w, wordSampling, wi, 1, 2);
+				writevec2D<int>(m, &wordSampling[0], wi, 0, 2);
+				writevec2D<int>(w, &wordSampling[0], wi, 1, 2);
 				//cout << "wi="<<wi<< ", m=" << m << ", w=" << w <<endl;
 				//writevec2D<int>(task_z, wordSampling, i, 2, 3);
 				z.push_back(z_tmp);
@@ -120,7 +121,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 		}
 	}
 
-	opencl.partition_number = partition_num;
+	opencl.partition_root_size = partition_num;
 
 	opencl.V = V;
 	opencl.K = K;
@@ -130,7 +131,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	opencl.partialV = partialV;
 	opencl.M = partialM;
 
-	opencl.words = wordSampling;
+	opencl.words = &wordSampling[0];
 	opencl.z = &z[0];
 	opencl.nd = &nd[0];
 	opencl.nw = &nw[0];
@@ -142,6 +143,19 @@ void Sampler::prepare_GPU(TaskPartition & task)
 
 void Sampler::sample_OPENCL() {
 	opencl.sample();
+	if (siblingSize > 1) {
+		syncDevice();
+	}
+}
+
+void Sampler::syncDevice()
+{
+	opencl.readFromDevice();
+}
+
+void Sampler::release_GPU()
+{
+	opencl.release();
 }
 
 void Sampler::sample_MPI()
@@ -156,8 +170,8 @@ void Sampler::sample_MPI()
 	double Kalpha = (double)K * alpha;
 
 	for (int wi = 0; wi < wordInsNum; wi++) {
-		int m = readvec2D(wordSampling, wi, 0, 2);
-		int w = readvec2D(wordSampling, wi, 1, 2);
+		int m = readvec2D(&wordSampling[0], wi, 0, 2);
+		int w = readvec2D(&wordSampling[0], wi, 1, 2);
 
 		int topic = z[wi];
 
@@ -254,7 +268,7 @@ void Sampler::fromTask(TaskPartition& task)
 	}
 
 	//word instances 
-	this->wordSampling = newVec2D<int>(wordInsNum, 3);
+	this->wordSampling = vector<int>(wordInsNum * 2);//newVec2D<int>(wordInsNum, 2);
 
 
 
@@ -275,8 +289,8 @@ void Sampler::fromTask(TaskPartition& task)
 			int w = task.words.at(i).at(1);
 			int task_z = task.words.at(i).at(2);
 
-			writevec2D<int>(m, wordSampling, i, 0, 2);
-			writevec2D<int>(w, wordSampling, i, 1, 2);
+			writevec2D<int>(m, &wordSampling[0], i, 0, 2);
+			writevec2D<int>(w, &wordSampling[0], i, 1, 2);
 			//writevec2D<int>(task_z, wordSampling, i, 2, 3);
 			z.push_back(task_z);
 		}
@@ -302,7 +316,7 @@ Sampler::~Sampler()
 	//delete[] nd;
 	//delete[] nw;
 
-	delete[] wordSampling;
+	//delete[] wordSampling;
 
 	//free(nd);
 	//free(nw);

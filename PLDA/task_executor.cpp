@@ -26,7 +26,7 @@ If Slave:
 
 inline void debug(int mpi_res) {
 	if (mpi_res != MPI_SUCCESS) {
-		cout << "Bad mpi result = " << mpi_res << endl;
+		cout << "Line:" << __LINE__<< ", Bad mpi result = " << mpi_res << endl;
 		throw mpi_res;
 	}
 }
@@ -36,8 +36,10 @@ void TaskExecutor::receiveMasterTasks(vector<TaskPartition> & tasks, Model * mod
 	//used only by ROOT
 	this->samplers = vector<Sampler>(tasks.size());
 	for (auto &task : tasks) {
+		this->samplers[task.partition_id].siblingSize = tasks.size();
 		this->samplers[task.partition_id].sampleMode = config.parallelType;
 		this->samplers[task.partition_id].fromTask(task);
+
 		//this->samplers[task.id].pid = config.processID;
 	}
 
@@ -58,6 +60,7 @@ void TaskExecutor::receiveRemoteTasks()
 
 	for (auto &task : tasks) {
 		//cout << "Give task to sampler, PID=" << this->procNumber << ", Task id= " << task.id << endl;
+		this->samplers[task.partition_id].siblingSize = tasks.size();
 		this->samplers[task.partition_id].sampleMode = config.parallelType;
 		this->samplers[task.partition_id].fromTask(task);
 		//this->samplers[task.id].pid = config.processID;
@@ -131,7 +134,7 @@ void TaskExecutor::executePartition()
 					MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
 
 				MPI_Allreduce(MPI_IN_PLACE, &sampler.nwsumDiff[0], sampler.K, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-				
+
 				for (int i = 0; i < nextSampler.K; i++) {
 					nextSampler.nwsum[i] += sampler.nwsumDiff[i];
 					for (auto& s : samplers) {
@@ -145,6 +148,12 @@ void TaskExecutor::executePartition()
 		if (offset == 0)
 			cout << "\rIteration " << iter_n << ", elapsed " << timer.elapsed() << std::flush;
 
+	}
+	if (this->MODE == P_GPU) {
+		for (auto & sampler : samplers) {
+			sampler.syncDevice();
+			sampler.release_GPU();
+		}
 	}
 	cout << endl;
 }
@@ -234,7 +243,7 @@ void TaskExecutor::execute()
 	//	cout << "\t" << s.wordInsNum;
 	//}
 	//cout << endl;
-	
+
 	executePartition();
 	if (config.processID == MPIHelper::ROOT) {
 		execMaster();

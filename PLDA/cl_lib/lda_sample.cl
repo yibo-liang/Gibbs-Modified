@@ -53,11 +53,14 @@ __kernel void sample(
 	int offset_index = col + row * Y;
 	int offset = partition_offset[offset_index];
 	int word_count = partition_word_count[offset_index];
-	
+
+	//debug[get_global_id(0)] = 1;
 
 	//copy nwsum to local
 	if (pid < K) { //assume that local work item will always be more than K
 		nwsum_local[pid] = nwsum_global[pid];
+		//debug[pid + K * group_id] = nwsum_local[pid];
+
 	}
 
 
@@ -121,27 +124,20 @@ __kernel void sample(
 			atomic_inc(&nw[v*K + topic]);
 			atomic_inc(&nwsum_local[topic]);
 
-			atomic_dec(&debug[v*K + old_topic]);
-			atomic_inc(&debug[v*K + topic]);
-
-			
-
 			z[z_i] = topic;
 		}
 
-		z_i++;
 		sample_count++;
+		z_i=z_i+group_total_p;
 		swi = pid + sample_count * group_total_p;
 	}; //exit if there is more workitem than words to sample
-
-	/*if (debug[get_global_id(0)] == get_global_id(0)) {
-		debug[pid + group_id * K] = nwsum_unsync[pid + group_id * K];
-	}*/
 
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 	//copy nwsum to global
 	if (pid < K) {
 		nwsum_unsync[pid + group_id * K] = nwsum_local[pid];
+
+		//debug[pid + group_id * K] = nwsum_local[pid] - nwsum_global[pid];
 
 	}
 
