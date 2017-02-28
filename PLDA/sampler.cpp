@@ -13,7 +13,7 @@ void Sampler::sample() {
 inline int Sampler::getPartitionID(vector<int> partitionVec, int i) {
 	if (partitionVec.size() == 1) return 0;
 	for (int j = 1; j < partitionVec.size(); j++) {
-		int p = partitionVec.at(j);
+		size_t p = partitionVec.at(j);
 		if (i < p) {
 			return j - 1;
 		}
@@ -34,7 +34,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	//The number of paritition on nd and nw
 
 	using clpartition = tuple<int, int, int>;
-	int partition_num = 256;
+	int partition_num = 8;
 	int word_count = wordInsNum;
 	float row_average = (float)word_count / (float)partition_num;
 	float col_average = (float)word_count / (float)partition_num;
@@ -89,8 +89,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 
 		int col = getPartitionID(nw_partition_offsets, w);
 		int row = getPartitionID(nd_partition_offsets, m);
-
-		parts.at(row).at(col).push_back(clpartition(m, w, task_z));
+		parts[row][col].push_back(clpartition(m, w, task_z));
 	}
 
 	//iterate all paritions, flatten the partition matrix, but remember the partition structure by using offset

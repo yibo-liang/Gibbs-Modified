@@ -385,7 +385,7 @@ void clWrapper::release()
 
 	ret = clReleaseProgram(program);
 
-	for (int i = 0; i < 10; i++) {
+	for (int i = 0; i < 12; i++) {
 		if (i == MEM_nwsum_local)continue;
 		ret = clReleaseMemObject(memoryObjects[i]);
 	}
@@ -406,9 +406,9 @@ inline size_t ceilUpToMultiple(size_t num, size_t base) {
 
 void clWrapper::sample()
 {
-	size_t local_workgroup_dim = 32;
+	size_t local_workgroup_dim;
 	cl_int ret;
-	//ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &local_workgroup_dim, NULL);
+	ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &local_workgroup_dim, NULL);
 
 
 
