@@ -32,11 +32,63 @@ string Model::getTopicWords(int n)
 	return result;
 }
 
+vector<Model> Model::getInitalSubmodel(int K_sublevel)
+{
+	//Create submodels after this model has been built
+	vector<Model> models(K);
+
+	for (int k = 0; k < K; k++) {
+		models[k].id = k;
+		models[k].super_model_id = this->id;
+		models[k].corpus = this->corpus;
+		models[k].K = this->K;
+		models[k].M = this->M;
+		models[k].V = this->V;
+		models[k].alpha = this->alpha;
+		models[k].beta = this->beta;
+		models[k].nw = vector<vector<int>>(V, vector<int>(K, 0));
+		models[k].nd = vector<vector<int>>(M, vector<int>(K, 0));
+		models[k].nwsum = vector<int>(K);
+		models[k].ndsum = vector<int>(M);
+		models[k].z = vec2d<int>(M);
+		models[k].wi = vec2d<int>(M);
+
+
+		for (int m = 0; m < z.size(); m++) {
+			Document &doc = corpus->documents[m];
+			int word_in_k_count = 0;
+			for (int i = 0; i < z.at(m).size(); i++) {
+				if (z.at(m).at(i) == k) {
+
+
+					int word = wi.at(m).at(i);
+					int topic = RandInteger(0, K_sublevel - 1);
+
+					models[k].z.at(m).push_back(topic);
+					models[k].wi.at(m).push_back(this->wi.at(m).at(i));
+
+					models[k].nwsum[topic]++;
+					models[k].nw[word][topic]++;
+					models[k].nd[m][topic]++;
+				}
+			}
+			models[k].ndsum[m] = models[k].wi.at(m).size();
+		}
+	}
+
+	return models;
+}
+
 Model::Model(const Model &m)
 {
+	this->id = m.id;
+	this->super_model_id = m.super_model_id;
+
+
 	this->K = m.K;
 	this->M = m.M;
 	this->V = m.V;
+	this->wi = m.wi;
 	this->z = m.z;
 	this->nw = m.nw;
 	this->nd = m.nd;

@@ -94,6 +94,16 @@ inline void importNW(Model * model, vecFast2D<int> nw, int partialV, int offset)
 	}
 }
 
+inline void import_Z(Model * model, vector<int> &z, vector<int> &wordSampling) {
+	for (int i = 0; i < z.size(); i++) {
+		int doc_id = wordSampling[i * 3];
+		//int w = wordSampling[i * 2 + 1];
+		int topic = z[i];
+		int word_index = wordSampling[i * 3 + 2];
+		model->z[doc_id][word_index] = topic;
+	}
+}
+
 void TaskExecutor::executePartition()
 {
 	int offset = config.processID;
@@ -192,6 +202,17 @@ void TaskExecutor::execMaster()
 
 				importNW(model, recevied_nw, partialV, offsetV);
 
+
+				int word_count;
+				MPI_Recv(&word_count, 1, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
+
+				vector<int> received_z(word_count);
+				vector<int> received_ws(word_count * 2);
+				MPI_Recv(&received_z[0], word_count, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
+				MPI_Recv(&received_ws[0], word_count*2, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
+
+				import_Z(model, received_z, received_ws);
+
 				delete[](recevied_nd);
 
 				delete[](recevied_nw);
@@ -202,7 +223,9 @@ void TaskExecutor::execMaster()
 	//root self
 	for (auto& sampler : samplers) {
 		importND(model, &sampler.nd[0], sampler.partialM, sampler.offsetM);
-		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV);
+		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV); 
+		import_Z(model, sampler.z, sampler.wordSampling);
+
 	}
 	model->updateSums();
 }
@@ -226,6 +249,12 @@ void TaskExecutor::execSlave()
 		MPI_Send(&sampler.nw[0], partialV * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
 
 		MPI_Send(&sampler.nd[0], partialM * K, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+
+		MPI_Send(&sampler.wordInsNum, 1, MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+		MPI_Send(&sampler.z[0], sampler.z.size(), MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+		MPI_Send(&sampler.wordSampling[0], sampler.wordSampling.size(), MPI_INT, ROOT, datatag, MPI_COMM_WORLD); //SEND nd
+
+
 		//cout << "Partial sent, pid=" << config.processID << endl;
 
 	}

@@ -13,32 +13,59 @@ public:
 
 	Corpus * corpus;
 
+	int id;
+	int super_model_id;
+
 	int K;//topic number
 	int M;//document number
 	int V;//vocabulary size
 
 	double alpha, beta;
 
-	vec2d<int> z;
-	vec2d<int> nw;
-	vec2d<int> nd;
+	vector<vector<int>> wi;
+	vector<vector<int>> z;
+	vector<vector<int>> nw;
+	vector<vector<int>> nd;
 	vector<int> nwsum;
 	vector<int> ndsum;
 	
-	vec2d<double> theta;
-	vec2d<double> phi;
+	vector<vector<double>> theta;
+	vector<vector<double>> phi;
 
 	string getTopicWords(int n);
 
+	vector<Model> getInitalSubmodel(int K_sublevel);
 	Model(const Model &m);
 	Model();
 	~Model();
 
 	void updateSums();
 
+	vector<Model> submodels;
+
 private:
 	void computeTheta();
 	void computePhi();
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int version)
+	{
+		ar & id;
+		ar & super_model_id;
+		ar & alpha;
+		ar & beta;
+		ar & K;
+		ar & V;
+		ar & M;
+		ar & BOOST_SERIALIZATION_NVP(z);
+		ar & BOOST_SERIALIZATION_NVP(wi);
+		ar & BOOST_SERIALIZATION_NVP(nd);
+		ar & BOOST_SERIALIZATION_NVP(nw);
+		ar & BOOST_SERIALIZATION_NVP(nwsum);
+		ar & BOOST_SERIALIZATION_NVP(ndsum);
+		ar & BOOST_SERIALIZATION_NVP(theta);
+		ar & BOOST_SERIALIZATION_NVP(phi);
+	}
 
 };
 

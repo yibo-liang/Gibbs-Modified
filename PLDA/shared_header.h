@@ -11,11 +11,14 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include <stdexcept>
 
+#include <sys/stat.h>
 #include "timer.h"
 
 #define P_MPI 10001
@@ -42,6 +45,13 @@ using vec2d = vector<vector<N>>;
 template<typename A, typename B>
 using hashmap = unordered_map<A, B>;
 
+inline int RandInteger(int min, int max)
+{
+	int range = max - min + 1;
+	int num = rand() % range + min;
+
+	return num;
+}
 namespace fastVector2D {
 
 	//1D array
@@ -84,6 +94,31 @@ namespace fastVector2D {
 	template<typename N>
 	inline void plusIn2D(vecFast2D<N> vec, const N& value, size_t row_num, size_t col_num, size_t col_size) {
 		vec[col_num + row_num*col_size] += value;
+	}
+
+
+	template<typename N>
+	void saveSerialisable(const N & obj, string filename) {
+		using namespace boost;
+
+		std::ofstream ofs(filename);
+		archive::text_oarchive ta(ofs);
+		ta << obj;
+		ofs.close();
+	}
+
+	template<typename N>
+	N loadSerialisable(string filename) {
+		using namespace boost;
+
+		N obj;
+		std::ifstream ifs(filename); 
+		archive::text_iarchive ta(ifs);
+		
+		ta >> obj;
+		ifs.close();
+
+		return obj;
 	}
 
 }

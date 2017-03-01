@@ -1,7 +1,7 @@
 
 #include "shared_header.h"
 #include "job_config.h"
-#include "task_generator.h"
+#include "task_initiator.h"
 #include "task_executor.h"
 #include <mpi.h>
 #include <iostream>
@@ -70,42 +70,79 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 
 	if (vm.count("mode")) {
 		config->parallelType = (vm["mode"].as<string>() == "gpu") ? P_GPU : P_MPI;
-		cout << "Using GPU ." <<endl;
+		cout << "Using GPU ." << endl;
 	}
 
 	return 0;
 }
 
+void recursiveRun(Model & model, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
+	initiator.model = &model;
+	executor.model = &model;
+	initiator.startMasterWithExecutor(executor);
+	executor.execute();
+
+	for (int i = 0; i < level; i++) {
+		cout << "\t";
+	}
+	cout << "Sampling Model K = " << model.K << endl;
+
+	level += 1;
+	if (level < config.hierarchStructure.size()) {
+		model.submodels = model.getInitalSubmodel(config.hierarchStructure[level - 1]);
+		for (int i = 0; i < config.hierarchStructure[level]; i++) {
+			recursiveRun(model.submodels[i], initiator, executor, config, level);
+		}
+	}
+}
+
+
+void masterHierarchical(JobConfig &config) {
+
+	int hierarch_level = config.hierarchStructure.size();
+
+	Corpus corpus;
+	Model model;
+
+	TaskInitiator initiator(config);
+	initiator.loadCorpus(corpus);
+	initiator.model = &model;
+	initiator.createInitialModel(model);
+	TaskExecutor executor(config);
+	recursiveRun(model, initiator, executor, config, 0);
+}
+
+
 int master(JobConfig &config) {
 	using namespace std;
 	Timer overall_time;
 	overall_time.reset();
-	TaskGenerator lda_job(config);
-	TaskExecutor executor(config);
-	lda_job.startMasterJob(executor);
-	executor.model->corpus = &lda_job.corpus;
-	executor.execute();
 
-	double elapsed = overall_time.elapsed();
-	string result = executor.model->getTopicWords(25);
-	ofstream myfile;
-	myfile.open("result.txt");
-	myfile << result;
-	myfile.close();
+	masterHierarchical(config);
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	cout << "LDA Gibbs Sampling finished" << endl;
-	cout << "Total time consumed: " << elapsed << " seconds" <<endl;
-	cout << "Average iteration time: " << elapsed / (double)config.iterationNumber << " seconds" << endl;
-	cout << "\nPress ENTER to exit.\n";
+	double elapsed = overall_time.elapsed();
+	{
+		cout << "LDA Gibbs Sampling finished" << endl;
+		cout << "Total time consumed: " << elapsed << " seconds" << endl;
+		cout << "\nPress ENTER to exit.\n";
+	}
+
 	cin.ignore();
 	return 0;
 }
 
 int slave(JobConfig config) {
 	TaskExecutor executor(config);
-	executor.receiveRemoteTasks();
-	executor.execute();
+	int sum = 1;
+	for (int i = 0; i < config.hierarchStructure.size(); i++) {
+		sum *= config.hierarchStructure[i];
+	}
+	sum += 1;
+	for (int i = 0; i < sum; i++) {
+		executor.receiveRemoteTasks();
+		executor.execute();
+	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 }
@@ -129,7 +166,7 @@ int main(int argc, char *argv[]) {
 
 	if (worldRank == 0) {
 
-		
+
 		//std::cin.ignore();
 		master(config);
 	}

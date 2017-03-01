@@ -169,8 +169,8 @@ void Sampler::sample_MPI()
 	double Kalpha = (double)K * alpha;
 
 	for (int wi = 0; wi < wordInsNum; wi++) {
-		int m = readvec2D(&wordSampling[0], wi, 0, 2);
-		int w = readvec2D(&wordSampling[0], wi, 1, 2);
+		int m = readvec2D(&wordSampling[0], wi, 0, 3);
+		int w = readvec2D(&wordSampling[0], wi, 1, 3);
 
 		int topic = z[wi];
 
@@ -220,7 +220,7 @@ void Sampler::fromTask(TaskPartition& task)
 {
 	//allocate memory and copy values from task
 	wordInsNum = task.words.size();
-	wordInfoSize = 3; //should be 3
+	wordInfoSize = 4; //should be 3
 
 
 	this->partition_id = task.partition_id;
@@ -267,7 +267,7 @@ void Sampler::fromTask(TaskPartition& task)
 	}
 
 	//word instances 
-	this->wordSampling = vector<int>(wordInsNum * 2);//newVec2D<int>(wordInsNum, 2);
+	this->wordSampling = vector<int>(wordInsNum * 3);//newVec2D<int>(wordInsNum, 2);
 
 
 
@@ -286,11 +286,14 @@ void Sampler::fromTask(TaskPartition& task)
 		for (int i = 0; i < wordInsNum; i++) {
 			int m = task.words.at(i).at(0);
 			int w = task.words.at(i).at(1);
+			int word_index = task.words.at(i).at(3);
+
 			int task_z = task.words.at(i).at(2);
 
-			writevec2D<int>(m, &wordSampling[0], i, 0, 2);
-			writevec2D<int>(w, &wordSampling[0], i, 1, 2);
-			//writevec2D<int>(task_z, wordSampling, i, 2, 3);
+
+			writevec2D<int>(m, &wordSampling[0], i, 0, 3);
+			writevec2D<int>(w, &wordSampling[0], i, 1, 3);
+			writevec2D<int>(word_index, &wordSampling[0], i, 2, 3);
 			z.push_back(task_z);
 		}
 	}

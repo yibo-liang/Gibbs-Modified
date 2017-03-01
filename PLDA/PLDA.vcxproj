@@ -137,7 +137,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <Optimization>Full</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -163,11 +163,10 @@
     <ClCompile Include="corpus.cpp" />
     <ClCompile Include="document.cpp" />
     <ClCompile Include="sampler.cpp" />
-    <ClCompile Include="task_generator.cpp" />
+    <ClCompile Include="task_initiator.cpp" />
     <ClCompile Include="job_config.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
-    <ClCompile Include="slave_sync_data.cpp" />
     <ClCompile Include="task_partition.cpp" />
     <ClCompile Include="task_executor.cpp" />
   </ItemGroup>
@@ -177,13 +176,12 @@
     <ClInclude Include="corpus.h" />
     <ClInclude Include="document.h" />
     <ClInclude Include="sampler.h" />
-    <ClInclude Include="task_generator.h" />
+    <ClInclude Include="task_initiator.h" />
     <ClInclude Include="job_config.h" />
     <ClInclude Include="json.hpp" />
     <ClInclude Include="model.h" />
     <ClInclude Include="mpi_helper.h" />
     <ClInclude Include="shared_header.h" />
-    <ClInclude Include="slave_sync_data.h" />
     <ClInclude Include="task_partition.h" />
     <ClInclude Include="task_executor.h" />
     <ClInclude Include="timer.h" />
