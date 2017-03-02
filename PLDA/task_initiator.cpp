@@ -19,15 +19,15 @@ void TaskInitiator::startMasterWithExecutor(
 	TaskExecutor &executor)
 {
 
-	cout << "" << corpus->documents.size() << " documents" << endl;
+	/*cout << "" << corpus->documents.size() << " documents" << endl;
 	cout << "" << corpus->totalWordCount << " words in total" << endl;
 	cout << "------------------------------" << endl;
-	cout << "Creating tasks ... " << endl;
+	cout << "Creating tasks ... " << endl;*/
 	vector<vector<TaskPartition>> taskGroups = tasksFromModel(*model);
-	cout << "" << taskGroups.size() << " task Groups created, each has " << taskGroups.at(0).size() << "tasks" << endl;
+	/*cout << "" << taskGroups.size() << " task Groups created, each has " << taskGroups.at(0).size() << "tasks" << endl;
 	cout << "------------------------------" << endl;
 	cout << "Sending tasks to workers ...." << endl;
-
+	*/
 	//send tasks to remote mpi process
 
 
@@ -46,8 +46,8 @@ void TaskInitiator::startMasterWithExecutor(
 		}
 		//cout << "send to PID=" << group.at(0).proc_id << endl;
 	}	
-	cout << "------------------------------" << endl;
-	cout << endl;
+	//cout << "------------------------------" << endl;
+	//cout << endl;
 
 }
 
@@ -55,7 +55,7 @@ void TaskInitiator::startMasterWithExecutor(
 Model TaskInitiator::createInitialModel(Model &model)
 {
 
-	cout << "Initialising LDA Model ... " << endl;
+	//cout << "Initialising LDA Model ... " << endl;
 	//initial values
 	model.id = 0;
 	model.super_model_id = -1;
@@ -71,13 +71,13 @@ Model TaskInitiator::createInitialModel(Model &model)
 	model.nwsum = vector<int>(model.K, 0);
 	model.ndsum = vector<int>(model.M, 0);
 	model.z = vector<vector<int>>(model.M);
-	model.wi = vector<vector<int>>(model.M);
+	model.w = vector<vector<int>>(model.M);
 
 	//assign inital topic to models;
 	for (int m = 0; m < model.M; m++) {
 		Document &doc = corpus->documents[m];
 		model.z[m] = vector<int>(doc.wordCount());
-		model.wi[m] = vector<int>(doc.wordCount());
+		model.w[m] = vector<int>(doc.wordCount());
 
 		model.ndsum[m] = corpus->documents[m].wordCount();
 
@@ -86,7 +86,7 @@ Model TaskInitiator::createInitialModel(Model &model)
 			int topic = RandInteger(0, model.K - 1);
 			int word = doc.words[i];
 
-			model.wi[m][i] = i;
+			model.w[m][i] = word;
 			model.z[m][i] = topic;
 			model.nwsum[topic]++;
 			model.nw[word][topic]++;
@@ -97,13 +97,13 @@ Model TaskInitiator::createInitialModel(Model &model)
 	model.corpus = corpus;
 	return model;
 
-	cout << "------------------------------" << endl;
+	//cout << "------------------------------" << endl;
 
 }
 
 void TaskInitiator::loadCorpus(Corpus & corpus)
 {
-	cout << "Loading Corpus ..." << endl;
+	//cout << "Loading Corpus ..." << endl;
 	if (config.filetype == "txt") {
 		corpus.fromTextFile(config.filename, config.documentNumber, 4, map<int, string>());
 	}
@@ -251,12 +251,10 @@ vector<vector<TaskPartition>> TaskInitiator::tasksFromModel(Model &initial_model
 	}
 	//assign words for each partition
 	for (int doc_i = 0; doc_i < initial_model.M; doc_i++) {
-		Document& doc = corpus->documents.at(doc_i);
 		int doc_partition = getPartitionID(nd_partition_offsets, doc_i);
-		for (int wi = 0; wi < initial_model.wi.at(doc_i).size(); wi++) {
+		for (int wi = 0; wi < initial_model.w.at(doc_i).size(); wi++) {
 
-			int wordIndexInDoc = initial_model.wi.at(doc_i).at(wi);
-			int w = doc.words.at(wordIndexInDoc);
+			int w = initial_model.w.at(doc_i).at(wi);
 			int word_partition = getPartitionID(nw_partition_offsets, w);
 
 			TaskPartition * partition = &(*(&partitions[doc_partition]))[word_partition];
@@ -274,7 +272,7 @@ vector<vector<TaskPartition>> TaskInitiator::tasksFromModel(Model &initial_model
 					partition_doc_i ,
 					partition_w,
 					z_word,
-					wordIndexInDoc })
+					0 })
 				);
 
 		}

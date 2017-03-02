@@ -70,7 +70,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 
 	if (vm.count("mode")) {
 		config->parallelType = (vm["mode"].as<string>() == "gpu") ? P_GPU : P_MPI;
-		cout << "Using GPU ." << endl;
+		
 	}
 
 	return 0;
@@ -82,6 +82,12 @@ void recursiveRun(Model & model, TaskInitiator & initiator, TaskExecutor & execu
 	initiator.startMasterWithExecutor(executor);
 	executor.execute();
 
+	//juust for test
+	string filename = (boost::format("MODEL-L%d-K%d.txt") % level % model.id).str();
+	std::ofstream ofs(filename);
+	ofs << model.getTopicWords(25);
+	ofs.close();
+
 	for (int i = 0; i < level; i++) {
 		cout << "\t";
 	}
@@ -89,8 +95,8 @@ void recursiveRun(Model & model, TaskInitiator & initiator, TaskExecutor & execu
 
 	level += 1;
 	if (level < config.hierarchStructure.size()) {
-		model.submodels = model.getInitalSubmodel(config.hierarchStructure[level - 1]);
-		for (int i = 0; i < config.hierarchStructure[level]; i++) {
+		model.submodels = model.getInitalSubmodel(config.hierarchStructure[level]);
+		for (int i = 0; i < model.K; i++) {
 			recursiveRun(model.submodels[i], initiator, executor, config, level);
 		}
 	}
@@ -135,10 +141,13 @@ int master(JobConfig &config) {
 int slave(JobConfig config) {
 	TaskExecutor executor(config);
 	int sum = 1;
-	for (int i = 0; i < config.hierarchStructure.size(); i++) {
-		sum *= config.hierarchStructure[i];
+	int base = 1;
+	for (int i = 0; i < config.hierarchStructure.size() - 1; i++) {
+		base *= config.hierarchStructure[i];
 	}
-	sum += 1;
+	if (base > 1) {
+		sum += base;
+	}
 	for (int i = 0; i < sum; i++) {
 		executor.receiveRemoteTasks();
 		executor.execute();

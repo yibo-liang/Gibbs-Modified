@@ -94,13 +94,13 @@ inline void importNW(Model * model, vecFast2D<int> nw, int partialV, int offset)
 	}
 }
 
-inline void import_Z(Model * model, vector<int> &z, vector<int> &wordSampling) {
+inline void import_Z(Model * model, vector<int> &z, vector<int> &wordSampling, int offsetV) {
 	for (int i = 0; i < z.size(); i++) {
 		int doc_id = wordSampling[i * 3];
-		//int w = wordSampling[i * 2 + 1];
+		int w = wordSampling[i * 3 + 1] + offsetV;
 		int topic = z[i];
-		int word_index = wordSampling[i * 3 + 2];
-		model->z[doc_id][word_index] = topic;
+		model->z[doc_id].push_back(topic);
+		model->w[doc_id].push_back(w);
 	}
 }
 
@@ -176,6 +176,10 @@ void TaskExecutor::execMaster()
 
 
 	//receive all sampler result from other process
+	for (int m = 0; m < model->M; m++) {
+		model->w.at(m).clear();
+		model->z.at(m).clear();
+	}
 
 	for (int i = 0; i < config.totalProcessCount; i++) {
 		if (i != ROOT) {
@@ -207,11 +211,11 @@ void TaskExecutor::execMaster()
 				MPI_Recv(&word_count, 1, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
 
 				vector<int> received_z(word_count);
-				vector<int> received_ws(word_count * 2);
+				vector<int> received_ws(word_count * 3);
 				MPI_Recv(&received_z[0], word_count, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
-				MPI_Recv(&received_ws[0], word_count*2, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
+				MPI_Recv(&received_ws[0], word_count*3, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
 
-				import_Z(model, received_z, received_ws);
+				import_Z(model, received_z, received_ws, offsetV);
 
 				delete[](recevied_nd);
 
@@ -224,10 +228,10 @@ void TaskExecutor::execMaster()
 	for (auto& sampler : samplers) {
 		importND(model, &sampler.nd[0], sampler.partialM, sampler.offsetM);
 		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV); 
-		import_Z(model, sampler.z, sampler.wordSampling);
+		import_Z(model, sampler.z, sampler.wordSampling, sampler.offsetV);
 
 	}
-	model->updateSums();
+	model->update();
 }
 
 void TaskExecutor::execSlave()

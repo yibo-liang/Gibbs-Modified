@@ -22,7 +22,7 @@ public:
 
 	double alpha, beta;
 
-	vector<vector<int>> wi;
+	vector<vector<int>> w;
 	vector<vector<int>> z;
 	vector<vector<int>> nw;
 	vector<vector<int>> nd;
@@ -39,7 +39,7 @@ public:
 	Model();
 	~Model();
 
-	void updateSums();
+	void update();
 
 	vector<Model> submodels;
 
@@ -58,7 +58,7 @@ private:
 		ar & V;
 		ar & M;
 		ar & BOOST_SERIALIZATION_NVP(z);
-		ar & BOOST_SERIALIZATION_NVP(wi);
+		ar & BOOST_SERIALIZATION_NVP(w);
 		ar & BOOST_SERIALIZATION_NVP(nd);
 		ar & BOOST_SERIALIZATION_NVP(nw);
 		ar & BOOST_SERIALIZATION_NVP(nwsum);
