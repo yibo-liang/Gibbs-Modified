@@ -76,7 +76,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	return 0;
 }
 
-void recursiveRun(Model & model, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
+void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
 	initiator.model = &model;
 	executor.model = &model;
 	initiator.startMasterWithExecutor(executor);
@@ -87,17 +87,17 @@ void recursiveRun(Model & model, TaskInitiator & initiator, TaskExecutor & execu
 	std::ofstream ofs(filename);
 	ofs << model.getTopicWords(25);
 	ofs.close();
-
+	cout << endl;
 	for (int i = 0; i < level; i++) {
 		cout << "\t";
 	}
-	cout << "Sampling Model K = " << model.K << endl;
+	cout << "Sampling Model K = " << model.K;
 
 	level += 1;
 	if (level < config.hierarchStructure.size()) {
 		model.submodels = model.getInitalSubmodel(config.hierarchStructure[level]);
 		for (int i = 0; i < model.K; i++) {
-			recursiveRun(model.submodels[i], initiator, executor, config, level);
+			recursiveEstimation(model.submodels[i], initiator, executor, config, level);
 		}
 	}
 }
@@ -115,7 +115,7 @@ void masterHierarchical(JobConfig &config) {
 	initiator.model = &model;
 	initiator.createInitialModel(model);
 	TaskExecutor executor(config);
-	recursiveRun(model, initiator, executor, config, 0);
+	recursiveEstimation(model, initiator, executor, config, 0);
 }
 
 
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
 	if (worldRank == 0) {
 
 
-		//std::cin.ignore();
+		cin.ignore();
 		master(config);
 	}
 	else {

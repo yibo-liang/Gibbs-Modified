@@ -7,7 +7,7 @@
 #include "job_config.h"
 #include "task_partition.h"
 #include "slave_sync_data.h"
-
+#include "model.h"
 #include "clwrapper.h"
 using namespace fastVector2D;
 
@@ -24,6 +24,8 @@ public:
 	vocabulary index w which requires a V sized array or a Hashmap;
 
 	*/
+	Model * inferModel;
+
 	int sampleMode = P_MPI;
 
 	int siblingSize = 1;

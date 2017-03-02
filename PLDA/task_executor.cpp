@@ -96,8 +96,8 @@ inline void importNW(Model * model, vecFast2D<int> nw, int partialV, int offset)
 
 inline void import_Z(Model * model, vector<int> &z, vector<int> &wordSampling, int offsetV) {
 	for (int i = 0; i < z.size(); i++) {
-		int doc_id = wordSampling[i * 3];
-		int w = wordSampling[i * 3 + 1] + offsetV;
+		int doc_id = wordSampling[i * 2];
+		int w = wordSampling[i * 2 + 1] + offsetV;
 		int topic = z[i];
 		model->z[doc_id].push_back(topic);
 		model->w[doc_id].push_back(w);
@@ -165,7 +165,7 @@ void TaskExecutor::executePartition()
 			sampler.release_GPU();
 		}
 	}
-	cout << endl;
+	//cout << endl;
 }
 
 void TaskExecutor::execMaster()

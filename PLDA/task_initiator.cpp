@@ -159,7 +159,13 @@ vector<vector<TaskPartition>> TaskInitiator::tasksFromModel(Model &initial_model
 	vector<size_t> nd_partition_offsets;
 	vector<size_t> nw_partition_offsets;
 
-	int word_count = corpus->totalWordCount;
+	int word_count = 0;
+
+	for (int k = 0; k < initial_model.nwsum.size(); k++) {
+		word_count += initial_model.nwsum[k];
+	}
+
+
 	int row_average = word_count / nd_partition_count;
 	int col_average = word_count / nw_partition_count;
 
@@ -271,8 +277,7 @@ vector<vector<TaskPartition>> TaskInitiator::tasksFromModel(Model &initial_model
 				vector<int>({
 					partition_doc_i ,
 					partition_w,
-					z_word,
-					0 })
+					z_word})
 				);
 
 		}
