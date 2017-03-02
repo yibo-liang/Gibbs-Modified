@@ -23,9 +23,12 @@ public:
 	~TaskInitiator();
 
 	Model createInitialModel(Model & model);
+	Model createInitialInferModel(Model & inferModel, Model & newModel);
+
 	void startMasterWithExecutor(TaskExecutor &executor);
 	void loadCorpus(Corpus & corpus);
-	
+	void loadCorpus(string corpusFilename, Corpus & corpus));
+
 
 private:
 

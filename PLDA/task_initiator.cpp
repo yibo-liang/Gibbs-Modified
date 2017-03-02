@@ -101,12 +101,62 @@ Model TaskInitiator::createInitialModel(Model &model)
 
 }
 
+Model TaskInitiator::createInitialInferModel(Model & inferModel, Model & newModel)
+{
+
+	newModel.id = 0;
+	newModel.super_model_id = -1;
+	newModel.K = config.hierarchStructure[0];
+	newModel.M = corpus->inferDocuments.size();
+	newModel.V = corpus->indexToWord.size();
+	newModel.alpha = config.alpha;
+	newModel.beta = config.beta;
+
+	newModel.corpus = corpus;
+	//make space for matrices
+	newModel.nw = vec2d<int>(inferModel.V, vector<int>(inferModel.K, 0));
+	newModel.nd = vec2d<int>(inferModel.M, vector<int>(inferModel.K, 0));
+	newModel.nwsum = vector<int>(inferModel.K, 0);
+	newModel.ndsum = vector<int>(inferModel.M, 0);
+	newModel.z = vector<vector<int>>(inferModel.M);
+	newModel.w = vector<vector<int>>(inferModel.M);
+
+	for (int m = 0; m < newModel.M; m++) {
+		Document &doc = corpus->inferDocuments[m];
+		newModel.z[m] = vector<int>(doc.wordCount());
+		newModel.w[m] = vector<int>(doc.wordCount());
+
+		newModel.ndsum[m] = corpus->inferDocuments[m].wordCount();
+
+		for (int i = 0; i < newModel.z[m].size(); i++) {
+			//random topic
+			int topic = RandInteger(0, newModel.K - 1);
+			int word = doc.words[i];
+
+			newModel.w[m][i] = word;
+			newModel.z[m][i] = topic;
+			newModel.nwsum[topic]++;
+			newModel.nw[word][topic]++;
+			newModel.nd[m][topic]++;
+
+		}
+	}
+
+	return newModel;
+}
+
 void TaskInitiator::loadCorpus(Corpus & corpus)
 {
 	//cout << "Loading Corpus ..." << endl;
 	if (config.filetype == "txt") {
 		corpus.fromTextFile(config.filename, config.documentNumber, 4, map<int, string>());
 	}
+	this->corpus = &corpus;
+}
+
+void TaskInitiator::loadCorpus(string corpusFilename, Corpus & corpus)
+{
+	corpus = loadSerialisable<Corpus>(corpusFilename);
 	this->corpus = &corpus;
 }
 

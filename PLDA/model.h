@@ -65,6 +65,7 @@ private:
 		ar & BOOST_SERIALIZATION_NVP(ndsum);
 		ar & BOOST_SERIALIZATION_NVP(theta);
 		ar & BOOST_SERIALIZATION_NVP(phi);
+		ar & BOOST_SERIALIZATION_NVP(submodels);
 	}
 
 };

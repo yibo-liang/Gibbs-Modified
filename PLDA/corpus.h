@@ -10,13 +10,18 @@ class Corpus
 {
 public:
 	
+	vector<Document> inferDocuments;
 	vector<Document> documents;
 	hashmap<string, int> wordToIndex;
 	hashmap<int, string> indexToWord;
 
 	int totalWordCount = 0;
+	int inferTotalWordCount = 0;
 
+	void inferTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx);
+	
 	void fromTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx);
+
 	void fromJSONFile(string filename, int docn, string textKey, vector<string> otherAttrs);
 	void fronCSVFILE(string filename, int docn, string textKey, vector<string> otherAttrs);//TODO
 	

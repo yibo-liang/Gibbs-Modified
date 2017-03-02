@@ -26,7 +26,7 @@ If Slave:
 
 inline void debug(int mpi_res) {
 	if (mpi_res != MPI_SUCCESS) {
-		cout << "Line:" << __LINE__<< ", Bad mpi result = " << mpi_res << endl;
+		cout << "Line:" << __LINE__ << ", Bad mpi result = " << mpi_res << endl;
 		throw mpi_res;
 	}
 }
@@ -39,7 +39,9 @@ void TaskExecutor::receiveMasterTasks(vector<TaskPartition> & tasks, Model * mod
 		this->samplers[task.partition_id].siblingSize = tasks.size();
 		this->samplers[task.partition_id].sampleMode = config.parallelType;
 		this->samplers[task.partition_id].fromTask(task);
-
+		if (config.inferencing) {
+			this->samplers[task.partition_id].inferModel = this->inferModel;
+		}
 		//this->samplers[task.id].pid = config.processID;
 	}
 
@@ -63,6 +65,9 @@ void TaskExecutor::receiveRemoteTasks()
 		this->samplers[task.partition_id].siblingSize = tasks.size();
 		this->samplers[task.partition_id].sampleMode = config.parallelType;
 		this->samplers[task.partition_id].fromTask(task);
+		if (config.inferencing) {
+			this->samplers[task.partition_id].inferModel = this->inferModel;
+		}
 		//this->samplers[task.id].pid = config.processID;
 	}
 
@@ -124,9 +129,13 @@ void TaskExecutor::executePartition()
 			int partiton_i = (iter_partition + offset) % totalProcessCount;
 			Sampler& sampler = samplers[partiton_i];
 
-			int sum = 0;
+			if (config.inferencing) {
+				sampler.inference();
+			}
+			else {
+				sampler.sample();
+			}
 
-			sampler.sample();
 
 
 			//after sampling /
@@ -213,7 +222,7 @@ void TaskExecutor::execMaster()
 				vector<int> received_z(word_count);
 				vector<int> received_ws(word_count * 3);
 				MPI_Recv(&received_z[0], word_count, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
-				MPI_Recv(&received_ws[0], word_count*3, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
+				MPI_Recv(&received_ws[0], word_count * 3, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
 
 				import_Z(model, received_z, received_ws, offsetV);
 
@@ -227,7 +236,7 @@ void TaskExecutor::execMaster()
 	//root self
 	for (auto& sampler : samplers) {
 		importND(model, &sampler.nd[0], sampler.partialM, sampler.offsetM);
-		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV); 
+		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV);
 		import_Z(model, sampler.z, sampler.wordSampling, sampler.offsetV);
 
 	}

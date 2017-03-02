@@ -12,8 +12,8 @@ public:
 	int processID;
 	int totalProcessCount;
 
-	int taskPerProcess=1;
-	
+	int taskPerProcess = 1;
+
 	//modelling information
 
 	int iterationNumber = 2000;
@@ -24,12 +24,15 @@ public:
 	vector<int> hierarchStructure; // [n1,n2,n3,..] => a hierarchical topic model with topic number = n1 as first level, n2 to the second, etc.
 
 	int model_type = NAIVE_HIERARCHICAL_MODEL;
-	
+
 	int parallelType = P_MPI;
 
 	string filename = "";
 	string filetype = "txt";
 
+	string inferedModelFile = "";
+	string inferCorpusFile = "";
+	bool inferencing = false;
 
 	JobConfig(const JobConfig &c);
 	JobConfig();

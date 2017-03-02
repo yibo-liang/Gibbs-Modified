@@ -9,6 +9,49 @@ Corpus::~Corpus()
 {
 }
 
+void Corpus::inferTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx)
+{
+	using namespace std;
+	std::ifstream file(filename);
+	std::string str;
+
+	cout << "Open file: " << filename << endl;
+	while (std::getline(file, str))
+	{
+		if (str.length() < 1) {
+			continue;
+		}
+		if (docn>0 && inferDocuments.size() >= docn) break;
+
+		istringstream iss(str);
+		vector<string> tokens{ istream_iterator<string>{iss},
+			istream_iterator<string>{} };
+
+
+		//new Document
+		Document doc;
+		//read text, and store new words to word map
+		for (int i = textIdxStart; i < tokens.size(); i++) {
+			string word = tokens[i];
+			auto it = wordToIndex.find(word);
+			if (it == wordToIndex.end()) {
+				//Do nothing, unknown new word is not infered 
+				//TODO: deal with new words
+			}
+			else {
+				doc.words.push_back(it->second);
+			}
+		}
+		for (auto const &it : otherAttrsIdx) {
+			doc.info[tokens[it.first]] = it.second;
+		}
+		if (doc.wordCount() <= 0) continue;
+		this->inferDocuments.push_back(doc);
+		this->inferTotalWordCount += doc.wordCount();
+		//read other usefull information
+	}
+}
+
 void Corpus::fromTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx)
 {
 	using namespace std;
@@ -30,7 +73,6 @@ void Corpus::fromTextFile(string filename, int docn, int textIdxStart, map<int, 
 
 		//new Document
 		Document doc;
-
 		//read text, and store new words to word map
 		for (int i = textIdxStart; i < tokens.size(); i++) {
 			string word = tokens[i];

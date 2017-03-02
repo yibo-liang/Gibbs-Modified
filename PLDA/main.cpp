@@ -28,7 +28,9 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
 		("hierarch,h", po::value<std::vector<int> >()->multitoken(), "set hierarchical structure in form (ignore brackets) [n1 n2 n3 ...], if unset, it will be a single topic model")
-		("mode,m", po::value<string>(), "set parallel mode, choose from GPU CPU (default).")
+		("parallel,p", po::value<string>(), "set parallel mode, choose from GPU CPU (default).")
+		("inference,inf", po::value<string>(), "inference mode, followed by the file name of the existing model.")
+		("infer-corpus,ic", po::value<string>(), "using existing serialized corpus file. give the file name")
 		;
 
 	po::variables_map vm;
@@ -68,10 +70,16 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		config->hierarchStructure = vector<int>({ 1 });
 	}
 
-	if (vm.count("mode")) {
-		config->parallelType = (vm["mode"].as<string>() == "gpu") ? P_GPU : P_MPI;
-		
+	if (vm.count("parallel")) {
+		config->parallelType = (vm["parallel"].as<string>() == "gpu") ? P_GPU : P_MPI;
+
 	}
+	if (vm.count("inference")) {
+		config->inferedModelFile = vm["inference"].as<string>();
+		config->inferCorpusFile = vm["infer-corpus"].as<string>();
+		config->inferencing = true;
+	}
+
 
 	return 0;
 }
@@ -102,20 +110,31 @@ void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor 
 	}
 }
 
+void recursiveInference(Model & inferModel, Model & newModel, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
+}
+
 
 void masterHierarchical(JobConfig &config) {
-
-	int hierarch_level = config.hierarchStructure.size();
-
 	Corpus corpus;
 	Model model;
-
 	TaskInitiator initiator(config);
 	initiator.loadCorpus(corpus);
 	initiator.model = &model;
 	initiator.createInitialModel(model);
 	TaskExecutor executor(config);
 	recursiveEstimation(model, initiator, executor, config, 0);
+}
+
+void masterHierarchicalInference(JobConfig & config) {
+	Corpus corpus;
+	Model inferedModel = loadSerialisable<Model>(config.inferedModelFile);
+	Model newModel;
+	TaskInitiator initiator(config);
+	initiator.loadCorpus(config.inferCorpusFile, corpus);
+	initiator.createInitialInferModel(inferedModel, newModel);
+	TaskExecutor executor(config);
+	executor.inferModel = &inferedModel;
+
 }
 
 

@@ -51,10 +51,8 @@ public:
 
 	vector<int> nd;// na[i][j]: number of words in document i assigned to topic j, size M x K
 	vector<int> nw;// cwt[i][j]: number of instances of word/term i assigned to topic j, size V x K
-
 	vector<int> nwsum;// nwsum[j]: total number of words assigned to topic j, size K
 	vector<int> nwsumDiff; //nwsum difference
-
 	vector<int> ndsum;// ndsum[i]: total number of words in document i, size M
 
 
@@ -63,6 +61,7 @@ public:
 	/* ------- Methods -----*/
 
 	void sample();
+	void inference();
 
 
 	void fromTask(TaskPartition& task);
@@ -79,9 +78,13 @@ private:
 	vector<double> p;
 
 	void sample_MPI();
+
 	inline int getPartitionID(vector<int> partitionVec, int i);
 	void prepare_GPU(TaskPartition & task);
 	void sample_OPENCL();
+	
+	
+	void inference_MPI();
 	//inline int mapV(int v); //map from nw array index to global vocabulary id;
 
 };

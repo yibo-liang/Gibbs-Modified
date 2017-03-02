@@ -20,7 +20,7 @@ public:
 	bool isMaster = false;
 
 	Model * model; //model for this topic model task, only available on Master node executor. Generated & initialised from job.
-	
+	Model * inferModel;
 
 	void receiveMasterTasks(vector<TaskPartition> & tasks, Model * model); // master node task executor should use this, so no mpi is used for faster speed
 	void receiveRemoteTasks(); //all other proecess should use this

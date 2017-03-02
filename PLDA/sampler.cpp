@@ -10,6 +10,16 @@ void Sampler::sample() {
 	}
 }
 
+void Sampler::inference()
+{
+	if (sampleMode == P_MPI) {
+		inference_MPI();
+	}
+	else {
+		throw 202;//NOT SUPPORTED
+	}
+}
+
 inline int Sampler::getPartitionID(vector<int> partitionVec, int i) {
 	if (partitionVec.size() == 1) return 0;
 	for (int j = 1; j < partitionVec.size(); j++) {
@@ -145,6 +155,62 @@ void Sampler::sample_OPENCL() {
 	if (siblingSize > 1) {
 		syncDevice();
 	}
+}
+
+void Sampler::inference_MPI()
+{
+
+	double Vbeta = (double)V * beta;
+	double Kalpha = (double)K * alpha;
+
+	for (int wi = 0; wi < wordInsNum; wi++) {
+		int m = readvec2D(&wordSampling[0], wi, 0, 2);
+		int w = readvec2D(&wordSampling[0], wi, 1, 2);
+
+		int topic = z[wi];
+
+
+
+		//local partial model
+		plusIn2D(&nw[0], -1, w, topic, K);
+		plusIn2D(&nd[0], -1, m, topic, K);
+		nwsum[topic]--;
+		nwsumDiff[topic]--;
+		//ndsum[m]--;
+
+		for (int k = 0; k < K; k++) {
+			double A = readvec2D<int>(&nw[0], w, k, K);
+			double B = nwsum[k];
+			double C = readvec2D<int>(&nd[0], m, k, K);
+			double D = ndsum[m];
+
+			double A2 = inferModel->nw[w][k];
+			double B2 = inferModel->nwsum[k];
+
+			p[k] = (A + A2 + beta) / (B + B2 + Vbeta) *
+				(C + alpha) / (D + Kalpha);
+		}
+		for (int k = 1; k < K; k++) {
+			p[k] += p.at(k - 1);
+		}
+		double u = ((double)rand() / (double)RAND_MAX) * p[K - 1];
+		for (topic = 0; topic < K; topic++) {
+			if (p[topic] >= u) {
+				break;
+			}
+		}
+
+		z[wi] = topic;
+
+		//local partial model
+		plusIn2D(&nw[0], 1, w, topic, K);
+		plusIn2D(&nd[0], 1, m, topic, K);
+		nwsum[topic]++;
+		nwsumDiff[topic]++;
+		//ndsum[m]++;
+
+	}
+
 }
 
 void Sampler::syncDevice()
