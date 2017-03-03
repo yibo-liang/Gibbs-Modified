@@ -4,7 +4,6 @@
 #define TASK_EXECUTOR
 #include "shared_header.h"
 #include "job_config.h"
-#include "slave_sync_data.h"
 #include "task_partition.h"
 #include "model.h"
 #include "sampler.h"

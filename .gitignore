@@ -213,3 +213,7 @@ _Pvt_Extensions/
 ModelManifest.xml
 
 *.db
+
+# Project related
+*.model
+*.ser

@@ -15,20 +15,21 @@ class TaskInitiator
 {
 public:
 
-	Corpus * corpus;
 
-	Model * model; //Model to be used for initiating, if inferencing , this will be the model tobe infered
 
 	TaskInitiator(JobConfig &config);
 	~TaskInitiator();
 
-	Model createInitialModel(Model & model);
-	Model createInitialInferModel(Model & inferModel, Model & newModel);
+	void createInitialModel(Corpus & corpus, Model & model, int K);
 
-	void startSampling(TaskExecutor &executor);
+	void createInitialInferModel(Corpus & corpus, Model & inferModel, Model & newModel);
 
-	void loadCorpus(Corpus & corpus);
-	void loadCorpus(string corpusFilename, Corpus & corpus);
+	void delieverTasks(TaskExecutor &executor, Model & model);
+
+	void loadSerializedCorpus(string filename,Corpus & corpus);
+
+	void loadCorpus(Corpus & corpus, JobConfig & config);
+	void loadInferencingCorpus(Corpus & corpus, JobConfig & config);
 
 
 private:

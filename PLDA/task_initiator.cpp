@@ -15,15 +15,14 @@ TaskInitiator::~TaskInitiator()
 
 
 
-void TaskInitiator::startSampling(
-	TaskExecutor &executor)
+void TaskInitiator::delieverTasks(TaskExecutor &executor, Model & model)
 {
 
 	/*cout << "" << corpus->documents.size() << " documents" << endl;
 	cout << "" << corpus->totalWordCount << " words in total" << endl;
 	cout << "------------------------------" << endl;
 	cout << "Creating tasks ... " << endl;*/
-	vector<vector<TaskPartition>> taskGroups = tasksFromModel(*model);
+	vector<vector<TaskPartition>> taskGroups = tasksFromModel(model);
 	/*cout << "" << taskGroups.size() << " task Groups created, each has " << taskGroups.at(0).size() << "tasks" << endl;
 	cout << "------------------------------" << endl;
 	cout << "Sending tasks to workers ...." << endl;
@@ -38,7 +37,7 @@ void TaskInitiator::startSampling(
 		auto& group = taskGroups[proc_n];
 		if (proc_n == 0) {
 			//cout << "send to Master" << endl;
-			executor.receiveMasterTasks(group, model);
+			executor.receiveMasterTasks(group, &model);
 		}
 		else {
 			//cout << "send to slave " << proc_n << endl;
@@ -52,16 +51,16 @@ void TaskInitiator::startSampling(
 }
 
 
-Model TaskInitiator::createInitialModel(Model &model)
+void TaskInitiator::createInitialModel(Corpus & corpus, Model & model, int K)
 {
 
 	//cout << "Initialising LDA Model ... " << endl;
 	//initial values
 	model.id = 0;
 	model.super_model_id = -1;
-	model.K = config.hierarchStructure[0];
-	model.M = corpus->documents.size();
-	model.V = corpus->indexToWord.size();
+	model.K = K;
+	model.M = corpus.documents.size();
+	model.V = corpus.indexToWord.size();
 	model.alpha = config.alpha;
 	model.beta = config.beta;
 
@@ -75,11 +74,11 @@ Model TaskInitiator::createInitialModel(Model &model)
 
 	//assign inital topic to models;
 	for (int m = 0; m < model.M; m++) {
-		Document &doc = corpus->documents[m];
+		Document &doc = corpus.documents[m];
 		model.z[m] = vector<int>(doc.wordCount());
 		model.w[m] = vector<int>(doc.wordCount());
 
-		model.ndsum[m] = corpus->documents[m].wordCount();
+		model.ndsum[m] = corpus.documents[m].wordCount();
 
 		for (int i = 0; i < model.z[m].size(); i++) {
 			//random topic
@@ -94,25 +93,24 @@ Model TaskInitiator::createInitialModel(Model &model)
 
 		}
 	}
-	model.corpus = corpus;
-	return model;
+	model.corpus = &corpus;
 
 	//cout << "------------------------------" << endl;
 
 }
 
-Model TaskInitiator::createInitialInferModel(Model & inferModel, Model & newModel)
+void TaskInitiator::createInitialInferModel(Corpus & corpus, Model & inferModel, Model & newModel)
 {
 
 	newModel.id = 0;
 	newModel.super_model_id = -1;
-	newModel.K = config.hierarchStructure[0];
-	newModel.M = corpus->inferDocuments.size();
-	newModel.V = corpus->indexToWord.size();
+	newModel.K = inferModel.K;
+	newModel.M = corpus.inferDocuments.size();
+	newModel.V = inferModel.V;
 	newModel.alpha = config.alpha;
 	newModel.beta = config.beta;
 
-	newModel.corpus = corpus;
+	newModel.corpus = &corpus;
 	//make space for matrices
 	newModel.nw = vec2d<int>(inferModel.V, vector<int>(inferModel.K, 0));
 	newModel.nd = vec2d<int>(inferModel.M, vector<int>(inferModel.K, 0));
@@ -122,11 +120,11 @@ Model TaskInitiator::createInitialInferModel(Model & inferModel, Model & newMode
 	newModel.w = vector<vector<int>>(inferModel.M);
 
 	for (int m = 0; m < newModel.M; m++) {
-		Document &doc = corpus->inferDocuments[m];
+		Document &doc = corpus.inferDocuments[m];
 		newModel.z[m] = vector<int>(doc.wordCount());
 		newModel.w[m] = vector<int>(doc.wordCount());
 
-		newModel.ndsum[m] = corpus->inferDocuments[m].wordCount();
+		newModel.ndsum[m] = corpus.inferDocuments[m].wordCount();
 
 		for (int i = 0; i < newModel.z[m].size(); i++) {
 			//random topic
@@ -142,22 +140,26 @@ Model TaskInitiator::createInitialInferModel(Model & inferModel, Model & newMode
 		}
 	}
 
-	return newModel;
 }
 
-void TaskInitiator::loadCorpus(Corpus & corpus)
+void TaskInitiator::loadCorpus(Corpus & corpus, JobConfig & config)
 {
 	//cout << "Loading Corpus ..." << endl;
 	if (config.filetype == "txt") {
 		corpus.fromTextFile(config.filename, config.documentNumber, 4, map<int, string>());
 	}
-	this->corpus = &corpus;
 }
 
-void TaskInitiator::loadCorpus(string corpusFilename, Corpus & corpus)
+void TaskInitiator::loadInferencingCorpus(Corpus & corpus, JobConfig & config)
+{
+	if (config.filetype == "txt") {
+		corpus.inferencingTextFile(config.filename, config.documentNumber, 4, map<int, string>());
+	}
+}
+
+void TaskInitiator::loadSerializedCorpus(string corpusFilename, Corpus & corpus)
 {
 	corpus = loadSerialisable<Corpus>(corpusFilename);
-	this->corpus = &corpus;
 }
 
 int getPartitionID(vector<size_t> partitionVec, int i) {
@@ -180,8 +182,8 @@ vector<vector<TaskPartition>> TaskInitiator::tasksFromModel(Model &initial_model
 
 	//initialise prototype partition
 	TaskPartition prototypePartition;
-	prototypePartition.K = model->K;
-	prototypePartition.V = model->V;
+	prototypePartition.K = initial_model.K;
+	prototypePartition.V = initial_model.V;
 	prototypePartition.alpha = config.alpha;
 	prototypePartition.beta = config.beta;
 
@@ -244,6 +246,12 @@ vector<vector<TaskPartition>> TaskInitiator::tasksFromModel(Model &initial_model
 		if (sum > col_average) {
 			sum = 0;
 			nw_partition_offsets.push_back(v);
+		}
+	}
+	if (nw_partition_offsets.size() < nw_partition_count) {
+		//fill up to partition with empty partition offset, if there is not enough 
+		for (int v = nw_partition_offsets.size(); v < nw_partition_count; v++) {
+			nw_partition_offsets.push_back(nw_partition_offsets[nw_partition_offsets.size() - 1]);
 		}
 	}
 

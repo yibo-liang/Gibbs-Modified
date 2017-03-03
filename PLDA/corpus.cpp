@@ -9,7 +9,7 @@ Corpus::~Corpus()
 {
 }
 
-void Corpus::inferTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx)
+void Corpus::inferencingTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx)
 {
 	using namespace std;
 	std::ifstream file(filename);

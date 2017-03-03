@@ -3,9 +3,10 @@
 #include "job_config.h"
 #include "task_initiator.h"
 #include "task_executor.h"
-#include <mpi.h>
+#include "mpi_helper.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 /*
 Main file : controlls the load, running mode and exit of the program
 */
@@ -21,7 +22,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 
 	desc.add_options()
 		("help,?", "produce help message")
-		("file,f", po::value<string>(), "set corpus filename")
+		("file,f", po::value<string>(), "set text filename")
 		("filetype,ft", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv]")
 		("niter", po::value<int>(), "set iteration number")
 		("docn,dn", po::value<int>(&n), "set document number")
@@ -85,13 +86,13 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 }
 
 void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
-	initiator.model = &model;
+
 	executor.model = &model;
-	initiator.startSampling(executor);
+	initiator.delieverTasks(executor, model);
 	executor.execute();
 
 	//juust for test
-	string filename = (boost::format("MODEL-L%d-K%d.txt") % level % model.id).str();
+	/*string filename = (boost::format("MODEL-L%d-K%d.txt") % level % model.id).str();
 	std::ofstream ofs(filename);
 	ofs << model.getTopicWords(25);
 	ofs.close();
@@ -99,7 +100,7 @@ void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor 
 	for (int i = 0; i < level; i++) {
 		cout << "\t";
 	}
-	cout << "Sampling Model K = " << model.K;
+	cout << "Sampling Model K = " << model.K;*/
 
 	level += 1;
 	if (level < config.hierarchStructure.size()) {
@@ -111,18 +112,47 @@ void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor 
 }
 
 void recursiveInference(Model & inferModel, Model & newModel, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
+	string msg = "infer";
+	MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
+
+	executor.model = &newModel;
+	initiator.delieverTasks(executor, newModel);
+	executor.execute();
+
+	level += 1;
+	if (inferModel.submodels.size()>0) {
+		newModel.submodels = newModel.getInitalSubmodel(inferModel.submodels[0].K);
+		for (int i = 0; i < newModel.K; i++) {
+			recursiveInference(inferModel.submodels[i], newModel.submodels[i], initiator, executor, config, level);
+		}
+	}
 }
 
+
+string nameModel(JobConfig &config) {
+	std::stringstream ss;
+	ss << "Model";
+	for (int i = 0; i < config.hierarchStructure.size(); i++) {
+		ss << "-" << config.hierarchStructure[i];
+	}
+	ss << ".model";
+	return ss.str();
+}
 
 void masterHierarchical(JobConfig &config) {
 	Corpus corpus;
 	Model model;
 	TaskInitiator initiator(config);
-	initiator.loadCorpus(corpus);
-	initiator.model = &model;
-	initiator.createInitialModel(model);
+	initiator.loadCorpus(corpus, config);
+	initiator.createInitialModel(corpus, model, config.hierarchStructure[0]);
 	TaskExecutor executor(config);
 	recursiveEstimation(model, initiator, executor, config, 0);
+	//save after sampling
+	saveSerialisable<Model>(model, nameModel(config));
+	saveSerialisable<Corpus>(corpus, "corpus.ser");
+	corpus = loadSerialisable<Corpus>("corpus.ser");
+	model=loadSerialisable<Model>(nameModel(config));
+
 }
 
 void masterHierarchicalInference(JobConfig & config) {
@@ -130,12 +160,15 @@ void masterHierarchicalInference(JobConfig & config) {
 	Model inferedModel = loadSerialisable<Model>(config.inferedModelFile);
 	Model newModel;
 	TaskInitiator initiator(config);
-	initiator.loadCorpus(config.inferCorpusFile, corpus); //Load existing corpus
-	initiator.model = &newModel; 
-	initiator.createInitialInferModel(inferedModel, newModel); //with existing model, create new model for inferencing
+	initiator.loadSerializedCorpus(config.inferCorpusFile, corpus); //Load existing corpus
+	initiator.loadInferencingCorpus(corpus, config);
+
+	initiator.createInitialInferModel(corpus, inferedModel, newModel); //with existing model, create new model for inferencing
 	TaskExecutor executor(config);
-	executor.inferModel = &inferedModel; 
+	executor.inferModel = &inferedModel;
 	executor.model = &newModel;
+	recursiveInference(inferedModel, newModel, initiator, executor, config, 0);
+	MPIHelper::mpiBroadCast(string("END"), MPIHelper::ROOT, config.processID);
 
 }
 
@@ -145,7 +178,12 @@ int master(JobConfig &config) {
 	Timer overall_time;
 	overall_time.reset();
 
-	masterHierarchical(config);
+	if (!config.inferencing) {
+		masterHierarchical(config);
+	}
+	else {
+		masterHierarchicalInference(config);
+	}
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	double elapsed = overall_time.elapsed();
@@ -161,17 +199,27 @@ int master(JobConfig &config) {
 
 int slave(JobConfig config) {
 	TaskExecutor executor(config);
-	int sum = 1;
-	int base = 1;
-	for (int i = 0; i < config.hierarchStructure.size() - 1; i++) {
-		base *= config.hierarchStructure[i];
+	if (!config.inferencing) {
+		int sum = 0;
+		int base = 1;
+		for (int i = 0; i < config.hierarchStructure.size(); i++) {
+			sum += base;
+			base *= config.hierarchStructure[i];
+		}
+
+		for (int i = 0; i < sum; i++) {
+			executor.receiveRemoteTasks();
+			executor.execute();
+		}
 	}
-	if (base > 1) {
-		sum += base;
-	}
-	for (int i = 0; i < sum; i++) {
-		executor.receiveRemoteTasks();
-		executor.execute();
+	else {
+		string msg = "";
+		MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
+		while (msg != "END") {
+			executor.receiveRemoteTasks();
+			executor.execute();
+			MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
+		}
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;

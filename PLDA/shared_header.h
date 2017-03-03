@@ -11,8 +11,8 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -66,7 +66,7 @@ namespace fastVector2D {
 
 	template<typename N>
 	inline N* newVec2D(size_t row_size, size_t col_size) {
-		N* result= (N*)malloc(row_size * col_size * sizeof(N));
+		N* result = (N*)malloc(row_size * col_size * sizeof(N));
 		if (result == NULL) {
 			throw 20;
 		}
@@ -102,20 +102,21 @@ namespace fastVector2D {
 	void saveSerialisable(const N & obj, string filename) {
 		using namespace boost;
 
-		std::ofstream ofs(filename);
-		archive::text_oarchive ta(ofs);
+		std::ofstream ofs(filename, std::ofstream::binary| std::ofstream::out);
+		archive::binary_oarchive ta(ofs);
 		ta << obj;
 		ofs.close();
 	}
+
 
 	template<typename N>
 	N loadSerialisable(string filename) {
 		using namespace boost;
 
 		N obj;
-		std::ifstream ifs(filename); 
-		archive::text_iarchive ta(ifs);
-		
+		std::ifstream ifs(filename, std::ifstream::binary | std::ifstream::in);
+		archive::binary_iarchive ta(ifs);
+
 		ta >> obj;
 		ifs.close();
 

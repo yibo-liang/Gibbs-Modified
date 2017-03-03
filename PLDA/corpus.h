@@ -18,7 +18,7 @@ public:
 	int totalWordCount = 0;
 	int inferTotalWordCount = 0;
 
-	void inferTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx);
+	void inferencingTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx);
 	
 	void fromTextFile(string filename, int docn, int textIdxStart, map<int, string> otherAttrsIdx);
 

@@ -6,7 +6,6 @@
 #include "shared_header.h"
 #include "job_config.h"
 #include "task_partition.h"
-#include "slave_sync_data.h"
 #include "model.h"
 #include "clwrapper.h"
 using namespace fastVector2D;
