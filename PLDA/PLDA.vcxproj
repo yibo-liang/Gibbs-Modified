@@ -159,7 +159,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="clPartitionData.cpp" />
     <ClCompile Include="clwrapper.cpp" />
     <ClCompile Include="corpus.cpp" />
     <ClCompile Include="document.cpp" />
@@ -172,7 +171,6 @@
     <ClCompile Include="task_executor.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="clPartitionData.h" />
     <ClInclude Include="clwrapper.h" />
     <ClInclude Include="corpus.h" />
     <ClInclude Include="document.h" />

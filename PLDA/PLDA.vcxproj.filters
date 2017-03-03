@@ -45,9 +45,6 @@
     <ClCompile Include="clwrapper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="clPartitionData.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="task_initiator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -87,9 +84,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="clwrapper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="clPartitionData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="task_initiator.h">

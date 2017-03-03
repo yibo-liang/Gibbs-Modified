@@ -15,7 +15,7 @@ TaskInitiator::~TaskInitiator()
 
 
 
-void TaskInitiator::startMasterWithExecutor(
+void TaskInitiator::startSampling(
 	TaskExecutor &executor)
 {
 

@@ -87,7 +87,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
 	initiator.model = &model;
 	executor.model = &model;
-	initiator.startMasterWithExecutor(executor);
+	initiator.startSampling(executor);
 	executor.execute();
 
 	//juust for test
@@ -130,10 +130,12 @@ void masterHierarchicalInference(JobConfig & config) {
 	Model inferedModel = loadSerialisable<Model>(config.inferedModelFile);
 	Model newModel;
 	TaskInitiator initiator(config);
-	initiator.loadCorpus(config.inferCorpusFile, corpus);
-	initiator.createInitialInferModel(inferedModel, newModel);
+	initiator.loadCorpus(config.inferCorpusFile, corpus); //Load existing corpus
+	initiator.model = &newModel; 
+	initiator.createInitialInferModel(inferedModel, newModel); //with existing model, create new model for inferencing
 	TaskExecutor executor(config);
-	executor.inferModel = &inferedModel;
+	executor.inferModel = &inferedModel; 
+	executor.model = &newModel;
 
 }
 

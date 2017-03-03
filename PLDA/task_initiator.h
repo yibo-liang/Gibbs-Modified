@@ -17,7 +17,7 @@ public:
 
 	Corpus * corpus;
 
-	Model * model;
+	Model * model; //Model to be used for initiating, if inferencing , this will be the model tobe infered
 
 	TaskInitiator(JobConfig &config);
 	~TaskInitiator();
@@ -25,9 +25,10 @@ public:
 	Model createInitialModel(Model & model);
 	Model createInitialInferModel(Model & inferModel, Model & newModel);
 
-	void startMasterWithExecutor(TaskExecutor &executor);
+	void startSampling(TaskExecutor &executor);
+
 	void loadCorpus(Corpus & corpus);
-	void loadCorpus(string corpusFilename, Corpus & corpus));
+	void loadCorpus(string corpusFilename, Corpus & corpus);
 
 
 private:
