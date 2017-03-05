@@ -112,15 +112,15 @@ void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor 
 }
 
 void recursiveInference(Model & inferModel, Model & newModel, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
-	string msg = "infer";
-	MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
+	//string msg = "infer";
+	//MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
 
 	executor.model = &newModel;
 	initiator.delieverTasks(executor, newModel);
 	executor.execute();
 
 	level += 1;
-	if (inferModel.submodels.size()>0) {
+	if (inferModel.submodels.size() > 0) {
 		newModel.submodels = newModel.getInitalSubmodel(inferModel.submodels[0].K);
 		for (int i = 0; i < newModel.K; i++) {
 			recursiveInference(inferModel.submodels[i], newModel.submodels[i], initiator, executor, config, level);
@@ -150,9 +150,11 @@ void masterHierarchical(JobConfig &config) {
 	//save after sampling
 	saveSerialisable<Model>(model, nameModel(config));
 	saveSerialisable<Corpus>(corpus, "corpus.ser");
-	corpus = loadSerialisable<Corpus>("corpus.ser");
-	model=loadSerialisable<Model>(nameModel(config));
 
+
+	std::ofstream ofs("tree.txt");
+	ofs << model.getTopicWordsTree(25);
+	ofs.close();
 }
 
 void masterHierarchicalInference(JobConfig & config) {
@@ -161,15 +163,23 @@ void masterHierarchicalInference(JobConfig & config) {
 	Model newModel;
 	TaskInitiator initiator(config);
 	initiator.loadSerializedCorpus(config.inferCorpusFile, corpus); //Load existing corpus
-	initiator.loadInferencingCorpus(corpus, config);
+	initiator.loadInferencingText(corpus, config);
+	inferedModel.assignCorpus(&corpus);
 
 	initiator.createInitialInferModel(corpus, inferedModel, newModel); //with existing model, create new model for inferencing
 	TaskExecutor executor(config);
 	executor.inferModel = &inferedModel;
 	executor.model = &newModel;
 	recursiveInference(inferedModel, newModel, initiator, executor, config, 0);
-	MPIHelper::mpiBroadCast(string("END"), MPIHelper::ROOT, config.processID);
+	//MPIHelper::mpiBroadCast(string("END"), MPIHelper::ROOT, config.processID);
 
+	std::ofstream ofs("inference_tree.txt");
+	ofs << newModel.getTopicWordsTree(25);
+	ofs.close();
+
+	std::ofstream ofs2("distrib_tree.txt");
+	ofs2 << newModel.getTopicWordDistributionTree();
+	ofs2.close();
 }
 
 
@@ -182,6 +192,9 @@ int master(JobConfig &config) {
 		masterHierarchical(config);
 	}
 	else {
+		config.taskPerProcess = 1;
+		config.totalProcessCount= 1;
+		config.processID = 0;
 		masterHierarchicalInference(config);
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -213,13 +226,16 @@ int slave(JobConfig config) {
 		}
 	}
 	else {
-		string msg = "";
+		/*string msg = "";
 		MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
 		while (msg != "END") {
 			executor.receiveRemoteTasks();
 			executor.execute();
 			MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
-		}
+		}*/
+
+		/* No paralle inferencing for now */
+		
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;

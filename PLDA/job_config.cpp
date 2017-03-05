@@ -13,7 +13,9 @@ JobConfig::JobConfig(const JobConfig & c)
 	this->parallelType = c.parallelType;
 	this->filename = c.filename;
 	this->filetype = c.filetype;
-
+	this->inferCorpusFile = c.inferCorpusFile;
+	this->inferedModelFile = c.inferedModelFile;
+	this->inferencing = c.inferencing;
 }
 JobConfig::JobConfig()
 {

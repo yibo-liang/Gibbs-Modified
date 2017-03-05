@@ -150,7 +150,7 @@ void TaskInitiator::loadCorpus(Corpus & corpus, JobConfig & config)
 	}
 }
 
-void TaskInitiator::loadInferencingCorpus(Corpus & corpus, JobConfig & config)
+void TaskInitiator::loadInferencingText(Corpus & corpus, JobConfig & config)
 {
 	if (config.filetype == "txt") {
 		corpus.inferencingTextFile(config.filename, config.documentNumber, 4, map<int, string>());

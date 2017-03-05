@@ -33,12 +33,15 @@ public:
 	vector<vector<double>> phi;
 
 	string getTopicWords(int n);
+	string getTopicWordsTree(int n);
+	string getTopicWordDistributionTree();//given the infered model, how is this model distributed over the infered model
 
 	vector<Model> getInitalSubmodel(int K_sublevel);
 	Model(const Model &m);
 	Model();
 	~Model();
 
+	void assignCorpus(Corpus * corpus);
 	void update();
 
 	vector<Model> submodels;
@@ -46,6 +49,10 @@ public:
 private:
 	void computeTheta();
 	void computePhi();
+	void getTopicWordsTree(int n, std::stringstream & strStream, Model & model, int depth);
+	void getTopicWordDistributionTree(std::stringstream & ss, int depth);
+
+
 	friend class boost::serialization::access;
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)

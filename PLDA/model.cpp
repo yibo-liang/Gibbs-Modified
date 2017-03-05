@@ -32,6 +32,20 @@ string Model::getTopicWords(int n)
 	return result;
 }
 
+string Model::getTopicWordsTree(int n)
+{
+	std::stringstream ss;
+	getTopicWordsTree(n, ss, *this, 0);
+	return ss.str();
+}
+
+string Model::getTopicWordDistributionTree()
+{
+	std::stringstream ss;
+	getTopicWordDistributionTree(ss, 0);
+	return ss.str();
+}
+
 vector<Model> Model::getInitalSubmodel(int K_sublevel)
 {
 	//Create submodels after this model has been built
@@ -54,7 +68,7 @@ vector<Model> Model::getInitalSubmodel(int K_sublevel)
 		models[k].w = vec2d<int>(M);
 
 
-		for (int m = 0; m < z.size(); m++) {
+		for (int m = 0; m < models[k].z.size(); m++) {
 			Document &doc = corpus->documents[m];
 			int word_in_k_count = 0;
 			for (int i = 0; i < z.at(m).size(); i++) {
@@ -95,6 +109,7 @@ Model::Model(const Model &m)
 	this->ndsum = m.ndsum;
 	this->theta = m.theta;
 	this->phi = m.phi;
+	this->submodels = m.submodels;
 }
 
 Model::Model()
@@ -103,6 +118,14 @@ Model::Model()
 
 Model::~Model()
 {
+}
+
+void Model::assignCorpus(Corpus * corpus)
+{
+	this->corpus = corpus;
+	for (int i = 0; i < this->submodels.size(); i++) {
+		this->submodels[i].assignCorpus(corpus);
+	}
 }
 
 void Model::update()
@@ -136,4 +159,62 @@ void Model::computePhi()
 			phi[k][w] = (nw[w][k] + beta) / (nwsum[k] + V * beta);
 		}
 	}
+}
+
+void Model::getTopicWordsTree(int n, std::stringstream & ss, Model & model, int depth)
+{
+	model.computePhi();
+	model.computeTheta();
+	for (int i = 0; i < model.K; i++) {
+		vector<double> & phiRow = model.phi[i];
+		vector<pair<string, double>> topic_word_distrib;
+		for (int j = 0; j < phiRow.size(); j++) {
+			string w = model.corpus->indexToWord[j];
+			topic_word_distrib.push_back(pair<string, double>(w, phiRow[j]));
+		}
+
+
+		std::sort(topic_word_distrib.begin(), topic_word_distrib.end(), [](pair<string, double> const& a, pair<string, double> const& b) {return a.second > b.second; });
+
+		for (int d = 0; d < depth; d++) {
+			ss << "\t";
+		}
+		ss << "Topic " << i << " ";
+		for (int j = 0; j < n; j++) {
+			ss << topic_word_distrib[j].first << "(" << topic_word_distrib[j].second << "), ";
+		}
+		ss << endl;
+		if (model.submodels.size() > 0)
+			getTopicWordsTree(n, ss, model.submodels[i], depth + 1);
+	}
+
+	return;
+}
+
+void Model::getTopicWordDistributionTree(std::stringstream & ss, int depth)
+{
+	int sum = 0;
+	for (int k = 0; k < K; k++) {
+		sum += nwsum[k];
+	}
+	vector<double> nwsum_normalised(K);
+	for (int k = 0; k < K; k++) {
+		if (sum > 0)
+			nwsum_normalised[k] = (double)nwsum[k] / (double)sum;
+		else
+			nwsum_normalised[k] = 0;
+
+		for (int d = 0; d < depth; d++) {
+			ss << "\t";
+		}
+
+		ss << "Topic " << k << " ";
+		ss << (double)((int)(nwsum_normalised[k] * 10000)) / 100 << "%, word count = " << nwsum[k] ;
+		ss << endl;
+
+		if (submodels.size() > 0) {
+			submodels[k].getTopicWordDistributionTree(ss, depth + 1);
+		}
+	}
+
 }

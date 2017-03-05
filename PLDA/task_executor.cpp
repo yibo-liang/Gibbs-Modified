@@ -278,7 +278,7 @@ void TaskExecutor::execSlave()
 
 void TaskExecutor::execute()
 {
-	MPI_Barrier(MPI_COMM_WORLD);
+	//MPI_Barrier(MPI_COMM_WORLD);
 
 	//cout << "Word load PID=" << this->procNumber;
 	//for (auto& s : samplers) {

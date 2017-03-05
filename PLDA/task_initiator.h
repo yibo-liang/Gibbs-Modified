@@ -29,7 +29,7 @@ public:
 	void loadSerializedCorpus(string filename,Corpus & corpus);
 
 	void loadCorpus(Corpus & corpus, JobConfig & config);
-	void loadInferencingCorpus(Corpus & corpus, JobConfig & config);
+	void loadInferencingText(Corpus & corpus, JobConfig & config);
 
 
 private:
