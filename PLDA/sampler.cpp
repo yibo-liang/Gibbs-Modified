@@ -44,16 +44,16 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	//The number of paritition on nd and nw
 
 	using clpartition = tuple<int, int, int>;
-	int partition_num = 8;
+	int partition_root_num = 256;
 	int word_count = wordInsNum;
-	float row_average = (float)word_count / (float)partition_num;
-	float col_average = (float)word_count / (float)partition_num;
+	float row_average = (float)word_count / (float)partition_root_num;
+	float col_average = (float)word_count / (float)partition_root_num;
 
 
 	vector<vector<vector<clpartition>>> parts(
-		partition_num,
+		partition_root_num,
 		vector<vector<clpartition>>(
-			partition_num,
+			partition_root_num,
 			vector<clpartition>()
 			)
 		);
@@ -103,17 +103,17 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	}
 
 	//iterate all paritions, flatten the partition matrix, but remember the partition structure by using offset
-	opencl.partition_offset = vector<int>(partition_num * partition_num);//newVec2D<int>(partition_num, partition_num);
-	opencl.partition_word_count = vector<int>(partition_num * partition_num);//newVec2D<int>(partition_num, partition_num);
+	opencl.partition_offset = vector<int>(partition_root_num * partition_root_num);//newVec2D<int>(partition_num, partition_num);
+	opencl.partition_word_count = vector<int>(partition_root_num * partition_root_num);//newVec2D<int>(partition_num, partition_num);
 	//opencl.words;
 	int wi = 0;
-	for (int row = 0; row < partition_num; row++) {
+	for (int row = 0; row < partition_root_num; row++) {
 		vector<vector<clpartition>> * part_row = &parts[row];
-		for (int col = 0; col < partition_num; col++) {
+		for (int col = 0; col < partition_root_num; col++) {
 			vector<clpartition> * p = &(*part_row)[col];
 
-			writevec2D<int>(wi, &opencl.partition_offset[0], row, col, partition_num);
-			writevec2D<int>(p->size(), &opencl.partition_word_count[0], row, col, partition_num);
+			writevec2D<int>(wi, &opencl.partition_offset[0], row, col, partition_root_num);
+			writevec2D<int>(p->size(), &opencl.partition_word_count[0], row, col, partition_root_num);
 			for (int i = 0; i < p->size(); i++) {
 				clpartition * part = &(*p)[i];
 				int m = std::get<0>(*part);
@@ -130,7 +130,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 		}
 	}
 
-	opencl.partition_root_size = partition_num;
+	opencl.partition_root_size = partition_root_num;
 
 	opencl.V = V;
 	opencl.K = K;

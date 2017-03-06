@@ -65,19 +65,19 @@ void clWrapper::benchmark()
 		clDebug(
 			clEnqueueWriteBuffer(command_queue, a_mem_obj, CL_TRUE, 0,
 				LIST_SIZE * sizeof(int), A, 0, NULL, NULL)
-			);
+		);
 
 		clDebug(
 			clEnqueueWriteBuffer(command_queue, b_mem_obj, CL_TRUE, 0,
 				LIST_SIZE * sizeof(int), B, 0, NULL, NULL)
-			);
+		);
 
 		cl_program program = clCreateProgramWithSource(context, 1,
 			(const char **)&source_str, (const size_t *)&source_size, &ret);
 
 		ret = clDebug(
 			clBuildProgram(program, 1, &device, NULL, NULL, NULL)
-			);
+		);
 
 		if (ret == CL_BUILD_PROGRAM_FAILURE) {
 			// Determine the size of the log
@@ -112,7 +112,7 @@ void clWrapper::benchmark()
 		ret = clDebug(
 			clEnqueueReadBuffer(command_queue, c_mem_obj, CL_TRUE, 0,
 				LIST_SIZE * sizeof(int), C, 0, NULL, NULL)
-			);
+		);
 
 		ret = clFlush(command_queue);
 		ret = clFinish(command_queue);
@@ -156,8 +156,8 @@ void clWrapper::prepareSampling()
 	string sampling_kernel = read_file("cl_lib/lda_sample.cl");
 
 	boost::format sampleKernelFormmater = boost::format(sampling_kernel)
-		% partition_root_size % K % K % V % M % alpha % beta //kernel sample
-		% K % partition_root_size;  //
+		% K % V % M % alpha % beta //kernel sample
+		% partition_root_size % wordCount;  //
 
 	sampling_kernel = rng_kernel + sampleKernelFormmater.str();
 	const char * kernel_source = sampling_kernel.c_str();
@@ -189,15 +189,15 @@ void clWrapper::prepareSampling()
 			throw 500;
 		}
 
-		kernels[SAMPLING_KERNEL] = clCreateKernel(program, "sample", &ret);
-		kernels[REDUCE_KERNEL] = clCreateKernel(program, "nwsum_allreduce", &ret);
+		kernels.push_back(clCreateKernel(program, "sample", &ret));
+		//kernels[REDUCE_KERNEL] = clCreateKernel(program, "nwsum_allreduce", &ret);
 
 	}
 	// Create memory buffers on the device for each vector 
 	{
-		int iter = 0;
-		memoryObjects[MEM_iter] = clCreateBuffer(context, CL_MEM_READ_WRITE, 1 * sizeof(int), NULL, &ret);
-		writeBuffer(memoryObjects[MEM_iter], &iter, 1);
+		//int iter = 0;
+		//memoryObjects[MEM_iter] = clCreateBuffer(context, CL_MEM_READ_WRITE, 1 * sizeof(int), NULL, &ret);
+		//writeBuffer(memoryObjects[MEM_iter], &iter, 1);
 
 		memoryObjects[MEM_partition_offset] = clCreateBuffer(context, CL_MEM_READ_ONLY, partition_root_size * partition_root_size * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_partition_offset], &partition_offset[0], partition_root_size * partition_root_size);
@@ -220,14 +220,14 @@ void clWrapper::prepareSampling()
 		memoryObjects[MEM_ndsum] = clCreateBuffer(context, CL_MEM_READ_ONLY, M * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_ndsum], ndsum, M);
 
-		memoryObjects[MEM_nwsum_unsync] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * partition_root_size * sizeof(int), NULL, &ret);
-		vector<int> temp(K* partition_root_size, 0);
-		writeBuffer(memoryObjects[MEM_nwsum_unsync], &temp[0], K * partition_root_size);
+		//memoryObjects[MEM_nwsum_unsync] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * partition_root_size * sizeof(int), NULL, &ret);
+		//vector<int> temp(K* partition_root_size, 0);
+		//writeBuffer(memoryObjects[MEM_nwsum_unsync], &temp[0], K * partition_root_size);
 
 		memoryObjects[MEM_nwsum_global] = clCreateBuffer(context, CL_MEM_READ_WRITE, K * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_nwsum_global], nwsum, K);
 
-		int debug_size = 1024 * partition_root_size;
+		int debug_size = partition_root_size;
 		vector<int> temp2(debug_size, 0);
 		memoryObjects[MEM_DEBUG] = clCreateBuffer(context, CL_MEM_READ_WRITE, debug_size * sizeof(int), NULL, &ret);
 		writeBuffer(memoryObjects[MEM_DEBUG], &temp2[0], debug_size);
@@ -236,24 +236,24 @@ void clWrapper::prepareSampling()
 	}
 	// Set kernel arguments
 	{
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 0, sizeof(cl_mem), (void *)&memoryObjects[MEM_iter]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 1, sizeof(cl_mem), (void *)&memoryObjects[MEM_partition_offset]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 2, sizeof(cl_mem), (void *)&memoryObjects[MEM_partition_word_count]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 3, sizeof(cl_mem), (void *)&memoryObjects[MEM_w]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 4, sizeof(cl_mem), (void *)&memoryObjects[MEM_z]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 5, sizeof(cl_mem), (void *)&memoryObjects[MEM_nd]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 6, sizeof(cl_mem), (void *)&memoryObjects[MEM_nw]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 7, sizeof(cl_mem), (void *)&memoryObjects[MEM_ndsum]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 8, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_unsync]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 9, K * sizeof(int), NULL);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 10, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_global]);
-		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 11, sizeof(cl_mem), (void *)&memoryObjects[MEM_DEBUG]);
+		//ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 0, sizeof(cl_mem), (void *)&memoryObjects[MEM_iter]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 0, sizeof(cl_mem), (void *)&memoryObjects[MEM_partition_offset]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 1, sizeof(cl_mem), (void *)&memoryObjects[MEM_partition_word_count]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 2, sizeof(cl_mem), (void *)&memoryObjects[MEM_w]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 3, sizeof(cl_mem), (void *)&memoryObjects[MEM_z]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 4, sizeof(cl_mem), (void *)&memoryObjects[MEM_nd]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 5, sizeof(cl_mem), (void *)&memoryObjects[MEM_nw]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 6, sizeof(cl_mem), (void *)&memoryObjects[MEM_ndsum]);
+		//ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 8, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_unsync]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 7, K * sizeof(int), NULL);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 8, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_global]);
+		ret = clSetKernelArg(kernels[SAMPLING_KERNEL], 9, sizeof(cl_mem), (void *)&memoryObjects[MEM_DEBUG]);
 
 
-		ret = clSetKernelArg(kernels[REDUCE_KERNEL], 0, sizeof(cl_mem), (void *)&memoryObjects[MEM_iter]);
-		ret = clSetKernelArg(kernels[REDUCE_KERNEL], 1, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_unsync]);
-		ret = clSetKernelArg(kernels[REDUCE_KERNEL], 2, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_global]);
-
+		/*	ret = clSetKernelArg(kernels[REDUCE_KERNEL], 0, sizeof(cl_mem), (void *)&memoryObjects[MEM_iter]);
+			ret = clSetKernelArg(kernels[REDUCE_KERNEL], 1, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_unsync]);
+			ret = clSetKernelArg(kernels[REDUCE_KERNEL], 2, sizeof(cl_mem), (void *)&memoryObjects[MEM_nwsum_global]);
+	*/
 	}
 
 
@@ -264,7 +264,7 @@ void clWrapper::writeBuffer(cl_mem & cl_memobj, void * buffer, size_t size)
 {
 	clDebug(
 		clEnqueueWriteBuffer(command_queue, cl_memobj, CL_TRUE, 0, size * sizeof(int), buffer, 0, NULL, NULL)
-		);
+	);
 }
 
 void clWrapper::initialise()
@@ -317,8 +317,8 @@ void clWrapper::initialise()
 			platformInfo(
 				string(platformProfile),
 				platformProfileRet
-				)
-			);
+			)
+		);
 
 		err = clGetDeviceIDs(platforms[i],
 			CL_DEVICE_TYPE_GPU,
@@ -367,8 +367,8 @@ void clWrapper::initialise()
 					compute_unit,
 					clock_frequency,
 					i
-					)
-				);
+				)
+			);
 
 		}
 	}
@@ -406,31 +406,27 @@ inline size_t ceilUpToMultiple(size_t num, size_t base) {
 
 void clWrapper::sample()
 {
-	size_t local_workgroup_dim;
+	size_t local_workgroup_dim = partition_root_size;
 	cl_int ret;
-	ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &local_workgroup_dim, NULL);
+	//ret = clGetKernelWorkGroupInfo(kernels[SAMPLING_KERNEL], selected_device, CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &local_workgroup_dim, NULL);
 
 
 
-	size_t global_item_size = local_workgroup_dim * partition_root_size;
+	size_t global_item_size = partition_root_size;
 	//sample all diagonally
 
 
-	for (int i = 0; i < partition_root_size; i++) {
+	ret = clEnqueueNDRangeKernel(command_queue, kernels[SAMPLING_KERNEL], 1, NULL,
+		&global_item_size, &local_workgroup_dim, 0, NULL, NULL);
+	clFinish(command_queue);
 
-		ret = clEnqueueNDRangeKernel(command_queue, kernels[SAMPLING_KERNEL], 1, NULL,
-				&global_item_size, &local_workgroup_dim, 0, NULL, NULL);
-		clFinish(command_queue);
-		ret = clEnqueueNDRangeKernel(command_queue, kernels[REDUCE_KERNEL], 1, NULL,
-			&local_workgroup_dim, &local_workgroup_dim, 0, NULL, NULL);
-	
-	/*	int debug_size = global_item_size;
-		vector<int> temp(debug_size, 0);
-		ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
+	int debug_size = global_item_size;
+	vector<int> temp(debug_size, 0);
+	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
 
-*/
 
-	}
+
+	readFromDevice();
 
 }
 
