@@ -32,6 +32,9 @@ public:
 
 	string inferedModelFile = "";
 	string inferCorpusFile = "";
+
+	int documentWordStart = 0;
+
 	bool inferencing = false;
 
 	JobConfig(const JobConfig &c);

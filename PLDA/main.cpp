@@ -26,6 +26,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("filetype,ft", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv]")
 		("niter", po::value<int>(), "set iteration number")
 		("docn,dn", po::value<int>(&n), "set document number")
+		("text-start,ts", po::value<int>(), "set starting index to be used for each line of document, if the document is text file only.")
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
 		("hierarch,h", po::value<std::vector<int> >()->multitoken(), "set hierarchical structure in form (ignore brackets) [n1 n2 n3 ...], if unset, it will be a single topic model")
@@ -58,6 +59,11 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	if (vm.count("docn")) {
 		config->documentNumber = vm["docn"].as<int>();
 	}
+	if (vm.count("text-start")) {
+		config->documentWordStart = vm["text-start"].as<int>();
+	}
+
+
 	if (vm.count("alpha")) {
 		config->alpha = vm["alpha"].as<double>();
 	}
@@ -193,7 +199,7 @@ int master(JobConfig &config) {
 	}
 	else {
 		config.taskPerProcess = 1;
-		config.totalProcessCount= 1;
+		config.totalProcessCount = 1;
 		config.processID = 0;
 		masterHierarchicalInference(config);
 	}
@@ -235,7 +241,7 @@ int slave(JobConfig config) {
 		}*/
 
 		/* No paralle inferencing for now */
-		
+
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;

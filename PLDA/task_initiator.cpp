@@ -146,14 +146,14 @@ void TaskInitiator::loadCorpus(Corpus & corpus, JobConfig & config)
 {
 	//cout << "Loading Corpus ..." << endl;
 	if (config.filetype == "txt") {
-		corpus.fromTextFile(config.filename, config.documentNumber, 4, map<int, string>());
+		corpus.fromTextFile(config.filename, config.documentNumber, config.documentWordStart, map<int, string>());
 	}
 }
 
 void TaskInitiator::loadInferencingText(Corpus & corpus, JobConfig & config)
 {
 	if (config.filetype == "txt") {
-		corpus.inferencingTextFile(config.filename, config.documentNumber, 4, map<int, string>());
+		corpus.inferencingTextFile(config.filename, config.documentNumber, config.documentWordStart, map<int, string>());
 	}
 }
 

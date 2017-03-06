@@ -16,6 +16,9 @@ JobConfig::JobConfig(const JobConfig & c)
 	this->inferCorpusFile = c.inferCorpusFile;
 	this->inferedModelFile = c.inferedModelFile;
 	this->inferencing = c.inferencing;
+
+	this->documentWordStart = c.documentWordStart;
+
 }
 JobConfig::JobConfig()
 {

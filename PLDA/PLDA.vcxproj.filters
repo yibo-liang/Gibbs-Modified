@@ -48,6 +48,9 @@
     <ClCompile Include="task_initiator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="experiment.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="document.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="task_initiator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="experiment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
