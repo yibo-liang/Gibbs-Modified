@@ -161,6 +161,14 @@ void TaskExecutor::executePartition()
 					}
 					sampler.nwsumDiff[i] = 0;
 				}
+
+
+				if (config.parallelType == P_GPU) {
+					sampler.syncToDevice();
+				}
+			}
+			else {
+				sampler.syncFinish();
 			}
 		}
 
@@ -168,9 +176,11 @@ void TaskExecutor::executePartition()
 			cout << "\rIteration " << iter_n << ", elapsed " << timer.elapsed() << std::flush;
 
 	}
-	if (this->MODE == P_GPU) {
+	
+	if (config.parallelType == P_GPU) {
 		for (auto & sampler : samplers) {
-			sampler.syncDevice();
+			sampler.syncFinish();
+			sampler.syncFromDevice();
 			sampler.release_GPU();
 		}
 	}
@@ -299,6 +309,7 @@ TaskExecutor::TaskExecutor(JobConfig config)
 {
 	this->config = config;
 	this->procNumber = config.processID;
+	this->MODE = config.parallelType;
 	if (config.processID == MPIHelper::ROOT) isMaster = true;
 
 }

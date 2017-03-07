@@ -65,19 +65,19 @@ void clWrapper::benchmark()
 		clDebug(
 			clEnqueueWriteBuffer(command_queue, a_mem_obj, CL_TRUE, 0,
 				LIST_SIZE * sizeof(int), A, 0, NULL, NULL)
-		);
+			);
 
 		clDebug(
 			clEnqueueWriteBuffer(command_queue, b_mem_obj, CL_TRUE, 0,
 				LIST_SIZE * sizeof(int), B, 0, NULL, NULL)
-		);
+			);
 
 		cl_program program = clCreateProgramWithSource(context, 1,
 			(const char **)&source_str, (const size_t *)&source_size, &ret);
 
 		ret = clDebug(
 			clBuildProgram(program, 1, &device, NULL, NULL, NULL)
-		);
+			);
 
 		if (ret == CL_BUILD_PROGRAM_FAILURE) {
 			// Determine the size of the log
@@ -112,7 +112,7 @@ void clWrapper::benchmark()
 		ret = clDebug(
 			clEnqueueReadBuffer(command_queue, c_mem_obj, CL_TRUE, 0,
 				LIST_SIZE * sizeof(int), C, 0, NULL, NULL)
-		);
+			);
 
 		ret = clFlush(command_queue);
 		ret = clFinish(command_queue);
@@ -264,7 +264,7 @@ void clWrapper::writeBuffer(cl_mem & cl_memobj, void * buffer, size_t size)
 {
 	clDebug(
 		clEnqueueWriteBuffer(command_queue, cl_memobj, CL_TRUE, 0, size * sizeof(int), buffer, 0, NULL, NULL)
-	);
+		);
 }
 
 void clWrapper::initialise()
@@ -317,8 +317,8 @@ void clWrapper::initialise()
 			platformInfo(
 				string(platformProfile),
 				platformProfileRet
-			)
-		);
+				)
+			);
 
 		err = clGetDeviceIDs(platforms[i],
 			CL_DEVICE_TYPE_GPU,
@@ -367,8 +367,8 @@ void clWrapper::initialise()
 					compute_unit,
 					clock_frequency,
 					i
-				)
-			);
+					)
+				);
 
 		}
 	}
@@ -381,11 +381,11 @@ void clWrapper::release()
 {
 	cl_int ret;
 	ret = clReleaseKernel(kernels[SAMPLING_KERNEL]);
-	ret = clReleaseKernel(kernels[REDUCE_KERNEL]);
+	//ret = clReleaseKernel(kernels[REDUCE_KERNEL]);
 
 	ret = clReleaseProgram(program);
 
-	for (int i = 0; i < 12; i++) {
+	for (int i = 0; i < 10; i++) {
 		if (i == MEM_nwsum_local)continue;
 		ret = clReleaseMemObject(memoryObjects[i]);
 	}
@@ -418,19 +418,19 @@ void clWrapper::sample()
 
 	ret = clEnqueueNDRangeKernel(command_queue, kernels[SAMPLING_KERNEL], 1, NULL,
 		&global_item_size, &local_workgroup_dim, 0, NULL, NULL);
-	clFinish(command_queue);
+	//clFinish(command_queue);
 
-	int debug_size = global_item_size;
-	vector<int> temp(debug_size, 0);
-	ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
+	//int debug_size = global_item_size;
+	//vector<int> temp(debug_size, 0);
+	//ret = clEnqueueReadBuffer(command_queue, memoryObjects[MEM_DEBUG], CL_TRUE, 0, debug_size * sizeof(int), &temp[0], 0, NULL, NULL);
 
 
 
-	readFromDevice();
+	//readFromDevice();
 
 }
 
-void clWrapper::readFromDevice()
+void clWrapper::SyncFromDevice()
 {
 
 	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nw], CL_TRUE, 0, partialV * K * sizeof(int), nw, 0, NULL, NULL));
@@ -438,6 +438,20 @@ void clWrapper::readFromDevice()
 	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount * sizeof(int), z, 0, NULL, NULL));
 	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K * sizeof(int), nd, 0, NULL, NULL));
 
+}
+
+void clWrapper::SyncToDevice()
+{
+	writeBuffer(memoryObjects[MEM_nw], nw, partialV*K);
+	writeBuffer(memoryObjects[MEM_nwsum_global], nwsum, K);
+	writeBuffer(memoryObjects[MEM_nd], nd, partialV*K);
+
+
+}
+
+void clWrapper::SyncFinsih()
+{
+	clFinish(command_queue);
 }
 
 

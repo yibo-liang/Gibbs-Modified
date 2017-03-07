@@ -68,7 +68,11 @@ public:
 	Sampler(const Sampler& s);
 	Sampler();
 
-	void syncDevice();
+	void syncFromDevice();
+	void syncToDevice();
+	void syncFinish();
+
+
 	void release_GPU();
 	~Sampler();
 private:

@@ -47,7 +47,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	int partition_root_num = 256;
 	int word_count = wordInsNum;
 	float row_average = (float)word_count / (float)partition_root_num;
-	float col_average = (float)word_count / (float)partition_root_num;
+	float col_average = (float)task.partitionM / (float)partition_root_num;
 
 
 	vector<vector<vector<clpartition>>> parts(
@@ -60,33 +60,46 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	vector<int> nd_partition_offsets;
 	vector<int> nw_partition_offsets;
 
+
+	vector<int> v_counts(partialV);
+	for (int i = 0; i < task.words.size(); i++) {
+		int w = task.words.at(i).at(1);
+		v_counts[w]++;
+	}
+
 	//nd partition offsets
 	double sum = 0;
 	nd_partition_offsets.push_back(0);
 	for (int m = 0; m < partialM; m++) {
-		int sum_row = 0;
-		for (int k = 0; k < K; k++) {
-			sum_row += task.nd[m][k];
-		}
-		sum += sum_row;
-		if (sum >= row_average) {
+		
+		sum += 1;
+		if (sum > col_average) {
 			sum = 0;
 			nd_partition_offsets.push_back(m);
 		}
 	}
 
 	//nw partition offsets
+
 	sum = 0;
 	nw_partition_offsets.push_back(0);
 	for (int v = 0; v < partialV; v++) {
-		int sum_col = 0;
-		for (int k = 0; k < K; k++) {
-			sum_col += task.nw[v][k];
-		}
-		sum += sum_col;
-		if (sum >= col_average) {
+		sum += v_counts[v];
+		if (sum >= row_average) {
 			sum = 0;
 			nw_partition_offsets.push_back(v);
+		}
+	}
+	if (nw_partition_offsets.size() < partition_root_num) {
+		//fill up to partition with empty partition offset, if there is not enough 
+		for (int v = nw_partition_offsets.size(); v < partition_root_num; v++) {
+			nw_partition_offsets.push_back(nw_partition_offsets[nw_partition_offsets.size() - 1]);
+		}
+	}	
+	if (nd_partition_offsets.size() < partition_root_num) {
+		//fill up to partition with empty partition offset, if there is not enough 
+		for (int v = nd_partition_offsets.size(); v < partition_root_num; v++) {
+			nd_partition_offsets.push_back(nd_partition_offsets[nd_partition_offsets.size() - 1]);
 		}
 	}
 
@@ -153,7 +166,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 void Sampler::sample_OPENCL() {
 	opencl.sample();
 	if (siblingSize > 1) {
-		syncDevice();
+		syncFromDevice();
 	}
 }
 
@@ -213,10 +226,22 @@ void Sampler::inference_MPI()
 
 }
 
-void Sampler::syncDevice()
+void Sampler::syncFromDevice()
 {
-	opencl.readFromDevice();
+	opencl.SyncFromDevice();
 }
+
+void Sampler::syncToDevice()
+{
+	opencl.SyncToDevice();
+}
+
+void Sampler::syncFinish()
+{
+	opencl.SyncFinsih();
+}
+
+
 
 void Sampler::release_GPU()
 {

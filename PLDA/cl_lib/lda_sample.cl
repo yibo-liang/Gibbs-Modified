@@ -45,7 +45,7 @@ __kernel void sample(
 	int pid = get_local_id(0);
 	int row = pid; //partition row position 
 
-	//debug[get_global_id(0)] = 1;
+	debug[get_global_id(0)] = get_global_id(0);
 
 	//copy nwsum to local
 	if (pid < K) { //assume that local work item will always be more than K
@@ -97,7 +97,7 @@ __kernel void sample(
 			z[offset + wi] = topic;
 			nd[m*K + topic]++;
 			nw[v*K + topic]++;
-			atomic_inc(&nwsum_local[k]);
+			atomic_inc(&nwsum_local[topic]);
 
 		}
 

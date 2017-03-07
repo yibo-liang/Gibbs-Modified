@@ -47,7 +47,7 @@ public:
 	cl_command_queue command_queue;
 	cl_program program;
 	vector<cl_kernel> kernels;
-	cl_mem memoryObjects[11];
+	cl_mem memoryObjects[10];
 
 	vector<int> partition_offset; // size P * P, each is a pointer position offset on buffer 'words'
 	vector<int> partition_word_count; //
@@ -73,7 +73,9 @@ public:
 	void initialise();
 	void release();
 	void sample();
-	void readFromDevice();
+	void SyncFromDevice();
+	void SyncToDevice();
+	void SyncFinsih();
 
 	clWrapper();
 	~clWrapper();
