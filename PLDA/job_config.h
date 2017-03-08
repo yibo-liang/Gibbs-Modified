@@ -5,44 +5,47 @@
 #define JOBCONFIG
 #include "shared_header.h"
 
-class JobConfig
-{
-public:
+namespace ParallelHLDA {
+	class JobConfig
+	{
+	public:
 
-	int processID;
-	int totalProcessCount;
+		int processID;
+		int totalProcessCount;
 
-	int taskPerProcess = 1;
+		int taskPerProcess = 1;
 
-	//modelling information
+		//modelling information
 
-	int iterationNumber = 2000;
-	int documentNumber = 0;// use all documents loaded if 0
-	double alpha = 0.01;
-	double beta = 0.01;
+		int iterationNumber = 2000;
+		int documentNumber = 0;// use all documents loaded if 0
+		double alpha = 0.01;
+		double beta = 0.01;
 
-	vector<int> hierarchStructure; // [n1,n2,n3,..] => a hierarchical topic model with topic number = n1 as first level, n2 to the second, etc.
+		vector<int> hierarchStructure; // [n1,n2,n3,..] => a hierarchical topic model with topic number = n1 as first level, n2 to the second, etc.
 
-	int model_type = NAIVE_HIERARCHICAL_MODEL;
+		int model_type = NAIVE_HIERARCHICAL_MODEL;
 
-	int parallelType = P_MPI;
+		int parallelType = P_MPI;
 
-	string filename = "";
-	string filetype = "txt";
+		string filename = "";
+		string filetype = "txt";
 
-	string inferedModelFile = "";
-	string inferCorpusFile = "";
+		string inferedModelFile = "";
+		string inferCorpusFile = "";
 
-	int documentWordStart = 0;
+		map<int, string> otherAttrsIndx;
 
-	bool inferencing = false;
+		int documentWordStart = 0;
 
-	JobConfig(const JobConfig &c);
-	JobConfig();
-	~JobConfig();
+		bool inferencing = false;
 
-private:
+		JobConfig(const JobConfig &c);
+		JobConfig();
+		~JobConfig();
 
-};
+	private:
 
+	};
+}
 #endif

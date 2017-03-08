@@ -24,6 +24,7 @@ If Slave:
 		broatcast new nd, nw, nwsum
 */
 
+using namespace ParallelHLDA;
 inline void debug(int mpi_res) {
 	if (mpi_res != MPI_SUCCESS) {
 		cout << "Line:" << __LINE__ << ", Bad mpi result = " << mpi_res << endl;

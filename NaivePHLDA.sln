@@ -1,11 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PLDA", "PLDA\PLDA.vcxproj", "{6BF1990A-4359-4596-931A-6361B5C11217}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestProject", "TestProject\TestProject.vcxproj", "{DD1496C9-8439-4B05-ABDA-489E3AF370BD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6BF1990A-4359-4596-931A-6361B5C11217} = {6BF1990A-4359-4596-931A-6361B5C11217}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

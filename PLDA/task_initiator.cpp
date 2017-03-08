@@ -3,6 +3,7 @@
 #include "mpi_helper.h"
 #include <random>
 
+using namespace ParallelHLDA;
 TaskInitiator::TaskInitiator(JobConfig &config)
 {
 	this->config = config;

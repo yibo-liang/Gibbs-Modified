@@ -1,9 +1,7 @@
 
 #include "shared_header.h"
 #include "job_config.h"
-#include "task_initiator.h"
-#include "task_executor.h"
-#include "mpi_helper.h"
+#include "lda_interface.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -11,6 +9,7 @@
 Main file : controlls the load, running mode and exit of the program
 */
 
+using namespace ParallelHLDA;
 namespace po = boost::program_options;
 
 int getProgramOption(int argc, char *argv[], JobConfig * config) {
@@ -23,7 +22,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	desc.add_options()
 		("help,?", "produce help message")
 		("file,f", po::value<string>(), "set text filename")
-		("filetype,ft", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv]")
+		("filetype,d", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv]")
 		("niter", po::value<int>(), "set iteration number")
 		("docn,d", po::value<int>(&n), "set document number")
 		("text-start,t", po::value<int>(), "set starting index to be used for each line of document, if the document is text file only.")
@@ -31,8 +30,9 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("beta", po::value<double>(&beta), "set beta number")
 		("hierarch,h", po::value<std::vector<int> >()->multitoken(), "set hierarchical structure in form (ignore brackets) [n1 n2 n3 ...], if unset, it will be a single topic model")
 		("parallel,p", po::value<string>(), "set parallel mode, choose from GPU CPU (default).")
-		("inference,inf", po::value<string>(), "inference mode, followed by the file name of the existing model.")
-		("infer-corpus,ic", po::value<string>(), "using existing serialized corpus file. give the file name")
+		("inference,i", po::value<string>(), "inference mode, followed by the file name of the existing model.")
+		("infer-corpus,c", po::value<string>(), "using existing serialized corpus file. give the file name")
+		("document-attributes,a", po::value<std::vector<string>>()->multitoken(), "Set the attributes indices of a document. [attr 1] [attr 2] .... [attr n]")
 		;
 
 	po::variables_map vm;
@@ -62,8 +62,6 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	if (vm.count("text-start")) {
 		config->documentWordStart = vm["text-start"].as<int>();
 	}
-
-
 	if (vm.count("alpha")) {
 		config->alpha = vm["alpha"].as<double>();
 	}
@@ -86,166 +84,17 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		config->inferCorpusFile = vm["infer-corpus"].as<string>();
 		config->inferencing = true;
 	}
+	if (vm.count("document-attributes")) {
+		int i=0;
+		for (string attr : vm["document-attributes"].as<vector<string>>()) {
+			config->otherAttrsIndx[i] = attr;
+		}
+	}
 
 
 	return 0;
 }
 
-void recursiveEstimation(Model & model, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
-
-	executor.model = &model;
-	initiator.delieverTasks(executor, model);
-	executor.execute();
-
-	//juust for test
-	/*string filename = (boost::format("MODEL-L%d-K%d.txt") % level % model.id).str();
-	std::ofstream ofs(filename);
-	ofs << model.getTopicWords(25);
-	ofs.close();
-	cout << endl;
-	for (int i = 0; i < level; i++) {
-		cout << "\t";
-	}
-	cout << "Sampling Model K = " << model.K;*/
-
-	level += 1;
-	if (level < config.hierarchStructure.size()) {
-		model.submodels = model.getInitalSubmodel(config.hierarchStructure[level]);
-		for (int i = 0; i < model.K; i++) {
-			recursiveEstimation(model.submodels[i], initiator, executor, config, level);
-		}
-	}
-}
-
-void recursiveInference(Model & inferModel, Model & newModel, TaskInitiator & initiator, TaskExecutor & executor, JobConfig & config, int level) {
-	//string msg = "infer";
-	//MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
-
-	executor.model = &newModel;
-	initiator.delieverTasks(executor, newModel);
-	executor.execute();
-
-	level += 1;
-	if (inferModel.submodels.size() > 0) {
-		newModel.submodels = newModel.getInitalSubmodel(inferModel.submodels[0].K);
-		for (int i = 0; i < newModel.K; i++) {
-			recursiveInference(inferModel.submodels[i], newModel.submodels[i], initiator, executor, config, level);
-		}
-	}
-}
-
-
-string nameModel(JobConfig &config) {
-	std::stringstream ss;
-	ss << "Model";
-	for (int i = 0; i < config.hierarchStructure.size(); i++) {
-		ss << "-" << config.hierarchStructure[i];
-	}
-	ss << ".model";
-	return ss.str();
-}
-
-void masterHierarchical(JobConfig &config) {
-	Corpus corpus;
-	Model model;
-	TaskInitiator initiator(config);
-	initiator.loadCorpus(corpus, config);
-	initiator.createInitialModel(corpus, model, config.hierarchStructure[0]);
-	TaskExecutor executor(config);
-	recursiveEstimation(model, initiator, executor, config, 0);
-	//save after sampling
-	saveSerialisable<Model>(model, nameModel(config));
-	saveSerialisable<Corpus>(corpus, "corpus.ser");
-
-
-	std::ofstream ofs("tree.txt");
-	ofs << model.getTopicWordsTree(25);
-	ofs.close();
-}
-
-void masterHierarchicalInference(JobConfig & config) {
-	Corpus corpus;
-	Model inferedModel = loadSerialisable<Model>(config.inferedModelFile);
-	Model newModel;
-	TaskInitiator initiator(config);
-	initiator.loadSerializedCorpus(config.inferCorpusFile, corpus); //Load existing corpus
-	initiator.loadInferencingText(corpus, config);
-	inferedModel.assignCorpus(&corpus);
-
-	initiator.createInitialInferModel(corpus, inferedModel, newModel); //with existing model, create new model for inferencing
-	TaskExecutor executor(config);
-	executor.inferModel = &inferedModel;
-	executor.model = &newModel;
-	recursiveInference(inferedModel, newModel, initiator, executor, config, 0);
-	//MPIHelper::mpiBroadCast(string("END"), MPIHelper::ROOT, config.processID);
-
-	std::ofstream ofs("inference_tree.txt");
-	ofs << newModel.getTopicWordsTree(25);
-	ofs.close();
-
-	std::ofstream ofs2("distrib_tree.txt");
-	ofs2 << newModel.getTopicWordDistributionTree();
-	ofs2.close();
-}
-
-
-int master(JobConfig &config) {
-	using namespace std;
-	Timer overall_time;
-	overall_time.reset();
-
-	if (!config.inferencing) {
-		masterHierarchical(config);
-	}
-	else {
-		config.taskPerProcess = 1;
-		config.totalProcessCount = 1;
-		config.processID = 0;
-		masterHierarchicalInference(config);
-	}
-	MPI_Barrier(MPI_COMM_WORLD);
-
-	double elapsed = overall_time.elapsed();
-	{
-		cout << "LDA Gibbs Sampling finished" << endl;
-		cout << "Total time consumed: " << elapsed << " seconds" << endl;
-		cout << "\nPress ENTER to exit.\n";
-	}
-
-	cin.ignore();
-	return 0;
-}
-
-int slave(JobConfig config) {
-	TaskExecutor executor(config);
-	if (!config.inferencing) {
-		int sum = 0;
-		int base = 1;
-		for (int i = 0; i < config.hierarchStructure.size(); i++) {
-			sum += base;
-			base *= config.hierarchStructure[i];
-		}
-
-		for (int i = 0; i < sum; i++) {
-			executor.receiveRemoteTasks();
-			executor.execute();
-		}
-	}
-	else {
-		/*string msg = "";
-		MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
-		while (msg != "END") {
-			executor.receiveRemoteTasks();
-			executor.execute();
-			MPIHelper::mpiBroadCast(msg, MPIHelper::ROOT, config.processID);
-		}*/
-
-		/* No paralle inferencing for now */
-
-	}
-	MPI_Barrier(MPI_COMM_WORLD);
-	return 0;
-}
 
 int main(int argc, char *argv[]) {
 
@@ -263,15 +112,16 @@ int main(int argc, char *argv[]) {
 	config.totalProcessCount = worldSize;
 	config.taskPerProcess = worldSize;
 	if (getProgramOption(argc, argv, &config) != 0) return 1;
+	LdaInterface interface;
 
 	if (worldRank == 0) {
 
 
 		cin.ignore();
-		master(config);
+		interface.master(config);
 	}
 	else {
-		slave(config);
+		interface.slave(config);
 	}
 
 	MPI_Finalize();

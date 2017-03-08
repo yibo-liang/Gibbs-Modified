@@ -1,6 +1,7 @@
 #include "sampler.h"
 
 
+using namespace ParallelHLDA;
 void Sampler::sample() {
 	if (sampleMode == P_MPI) {
 		sample_MPI();
@@ -44,7 +45,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	//The number of paritition on nd and nw
 
 	using clpartition = tuple<int, int, int>;
-	int partition_root_num = 256;
+	int partition_root_num = 64;
 	int word_count = wordInsNum;
 	float row_average = (float)word_count / (float)partition_root_num;
 	float col_average = (float)task.partitionM / (float)partition_root_num;

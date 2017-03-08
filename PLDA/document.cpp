@@ -1,5 +1,6 @@
 #include "document.h"
 
+using namespace ParallelHLDA;
 Document::Document()
 {
 }

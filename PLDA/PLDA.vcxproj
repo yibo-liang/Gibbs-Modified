@@ -162,7 +162,7 @@
     <ClCompile Include="clwrapper.cpp" />
     <ClCompile Include="corpus.cpp" />
     <ClCompile Include="document.cpp" />
-    <ClCompile Include="experiment.cpp" />
+    <ClCompile Include="lda_interface.cpp" />
     <ClCompile Include="sampler.cpp" />
     <ClCompile Include="task_initiator.cpp" />
     <ClCompile Include="job_config.cpp" />
@@ -175,7 +175,7 @@
     <ClInclude Include="clwrapper.h" />
     <ClInclude Include="corpus.h" />
     <ClInclude Include="document.h" />
-    <ClInclude Include="experiment.h" />
+    <ClInclude Include="lda_interface.h" />
     <ClInclude Include="sampler.h" />
     <ClInclude Include="task_initiator.h" />
     <ClInclude Include="job_config.h" />

@@ -1,6 +1,7 @@
 #include "corpus.h"
 
 
+using namespace ParallelHLDA;
 Corpus::Corpus()
 {
 }
@@ -91,7 +92,7 @@ void Corpus::fromTextFile(string filename, int docn, int textIdxStart, map<int, 
 			}
 		}		
 		for (auto const &it : otherAttrsIdx) {
-			doc.info[tokens[it.first]] = it.second;
+			doc.info[it.second] = tokens[it.first];
 		}
 		if (doc.wordCount() <= 0) continue;
 		this->documents.push_back(doc);

@@ -133,18 +133,44 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(BOOST_ROOT)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BOOST_ROOT); $(SolutionDir)\PLDA;$(CUDA_PATH)\include; $(MSMPI_INC);$(MSMPI_INC)\x64;</AdditionalIncludeDirectories>
+      <AdditionalUsingDirectories>
+      </AdditionalUsingDirectories>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(BOOST_ROOT)\lib64-msvc-14.0</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSMPI_LIB64);$(BOOST_ROOT)/lib64-msvc-14.0;$(CUDA_PATH)/lib/x64</AdditionalLibraryDirectories>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;msmpi.lib;OpenCL.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\PLDA\clwrapper.cpp" />
+    <ClCompile Include="..\PLDA\corpus.cpp" />
+    <ClCompile Include="..\PLDA\document.cpp" />
+    <ClCompile Include="..\PLDA\job_config.cpp" />
+    <ClCompile Include="..\PLDA\lda_interface.cpp" />
+    <ClCompile Include="..\PLDA\model.cpp" />
+    <ClCompile Include="..\PLDA\sampler.cpp" />
+    <ClCompile Include="..\PLDA\task_executor.cpp" />
+    <ClCompile Include="..\PLDA\task_initiator.cpp" />
+    <ClCompile Include="..\PLDA\task_partition.cpp" />
     <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PLDA\PLDA.vcxproj">
+      <Project>{6bf1990a-4359-4596-931a-6361b5c11217}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="plda_all.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="resource1.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

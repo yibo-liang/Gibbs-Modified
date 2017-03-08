@@ -2,6 +2,7 @@
 
 using std::pair;
 
+using namespace ParallelHLDA;
 
 
 string Model::getTopicWords(int n)

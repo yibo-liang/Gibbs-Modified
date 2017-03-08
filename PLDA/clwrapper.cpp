@@ -5,6 +5,7 @@
 
 #define MAX_SOURCE_SIZE (0x100000)
 
+using namespace ParallelHLDA;
 inline string read_file(string filename) {
 	std::ifstream t(filename);
 	std::stringstream buffer;
@@ -437,7 +438,7 @@ void clWrapper::SyncFromDevice()
 	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nwsum_global], CL_TRUE, 0, K * sizeof(int), nwsum, 0, NULL, NULL));
 	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_z], CL_TRUE, 0, wordCount * sizeof(int), z, 0, NULL, NULL));
 	clDebug(clEnqueueReadBuffer(command_queue, memoryObjects[MEM_nd], CL_TRUE, 0, M * K * sizeof(int), nd, 0, NULL, NULL));
-
+	
 }
 
 void clWrapper::SyncToDevice()

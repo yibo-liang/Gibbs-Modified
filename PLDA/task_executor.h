@@ -8,51 +8,52 @@
 #include "model.h"
 #include "sampler.h"
 
-class TaskExecutor
-{
-public:
-	
-	JobConfig config;
+namespace ParallelHLDA {
+	class TaskExecutor
+	{
+	public:
 
-	int MODE = P_MPI;
-	int procNumber;
-	bool isMaster = false;
+		JobConfig config;
 
-	Model * model; //model for this topic model task, only available on Master node executor. Generated & initialised from job.
-	Model * inferModel;
+		int MODE = P_MPI;
+		int procNumber;
+		bool isMaster = false;
 
-	void receiveMasterTasks(vector<TaskPartition> & tasks, Model * model); // master node task executor should use this, so no mpi is used for faster speed
-	void receiveRemoteTasks(); //all other proecess should use this
+		Model * model; //model for this topic model task, only available on Master node executor. Generated & initialised from job.
+		Model * inferModel;
 
-	void execute();
+		void receiveMasterTasks(vector<TaskPartition> & tasks, Model * model); // master node task executor should use this, so no mpi is used for faster speed
+		void receiveRemoteTasks(); //all other proecess should use this
 
-	TaskExecutor( JobConfig config);
-	~TaskExecutor();
+		void execute();
 
-private:
+		TaskExecutor(JobConfig config);
+		~TaskExecutor();
 
-
-
-
-	Timer timer;
-	map<string, double> timeRecord;
-
-	void rtime(string str) {
-		timeRecord[str]  += timer.elapsed();
-	}
-
-	//vector<Task> tasks;
-	vector<Sampler> samplers;
+	private:
 
 
-	//SlaveSyncData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
-	
-	void exchangeData(Sampler& currentSampler, int partiton_i, int receiver_PID, int sender_PID);
-	void executePartition();
-	
-	void execMaster();
-	void execSlave();
 
-};
 
+		Timer timer;
+		map<string, double> timeRecord;
+
+		void rtime(string str) {
+			timeRecord[str] += timer.elapsed();
+		}
+
+		//vector<Task> tasks;
+		vector<Sampler> samplers;
+
+
+		//SlaveSyncData sampleTask(Task &task); //since each task is only subset of the corpus, we need to return all data in the model that need to be synchronized.
+
+		void exchangeData(Sampler& currentSampler, int partiton_i, int receiver_PID, int sender_PID);
+		void executePartition();
+
+		void execMaster();
+		void execSlave();
+
+	};
+}
 #endif // !TASK_EXECUTOR

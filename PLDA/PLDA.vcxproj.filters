@@ -48,7 +48,7 @@
     <ClCompile Include="task_initiator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="experiment.cpp">
+    <ClCompile Include="lda_interface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -92,7 +92,7 @@
     <ClInclude Include="task_initiator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="experiment.h">
+    <ClInclude Include="lda_interface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

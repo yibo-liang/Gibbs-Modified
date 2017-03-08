@@ -1,4 +1,5 @@
 #include "job_config.h"
+using namespace ParallelHLDA;
 JobConfig::JobConfig(const JobConfig & c)
 {
 	this->processID = c.processID;
