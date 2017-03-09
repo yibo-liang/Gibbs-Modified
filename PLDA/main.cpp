@@ -22,7 +22,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	desc.add_options()
 		("help,?", "produce help message")
 		("file,f", po::value<string>(), "set text filename")
-		("filetype,d", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv]")
+		("filetype,d", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv/ser(using saved serialized corpus \".ser\" type file)]")
 		("niter", po::value<int>(), "set iteration number")
 		("docn,d", po::value<int>(&n), "set document number")
 		("text-start,t", po::value<int>(), "set starting index to be used for each line of document, if the document is text file only.")
@@ -32,7 +32,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("parallel,p", po::value<string>(), "set parallel mode, choose from GPU CPU (default).")
 		("inference,i", po::value<string>(), "inference mode, followed by the file name of the existing model.")
 		("infer-corpus,c", po::value<string>(), "using existing serialized corpus file. give the file name")
-		("document-attributes,a", po::value<std::vector<string>>()->multitoken(), "Set the attributes indices of a document. [attr 1] [attr 2] .... [attr n]")
+		("document-attributes,a", po::value<vector<string>>()->multitoken(), "Set the attributes indices of a document. [attr 1] [attr 2] .... [attr n]")
 		;
 
 	po::variables_map vm;
@@ -88,6 +88,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		int i=0;
 		for (string attr : vm["document-attributes"].as<vector<string>>()) {
 			config->otherAttrsIndx[i] = attr;
+			i++;
 		}
 	}
 

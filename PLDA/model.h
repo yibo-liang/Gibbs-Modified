@@ -37,6 +37,7 @@ namespace ParallelHLDA {
 		string getTopicWordsTree(int n);
 		string getTopicWordDistributionTree();//given the infered model, how is this model distributed over the infered model
 
+
 		vector<Model> getInitalSubmodel(int K_sublevel);
 		Model(const Model &m);
 		Model();

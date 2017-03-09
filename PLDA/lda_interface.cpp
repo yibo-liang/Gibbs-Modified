@@ -61,12 +61,12 @@ void LdaInterface::masterHierarchical(JobConfig &config) {
 	Model model;
 	TaskInitiator initiator(config);
 	initiator.loadCorpus(corpus, config);
+	saveSerialisable<Corpus>(corpus, "corpus.ser");
 	initiator.createInitialModel(corpus, model, config.hierarchStructure[0]);
 	TaskExecutor executor(config);
 	recursiveEstimation(model, initiator, executor, config, 0);
 	//save after sampling
 	saveSerialisable<Model>(model, nameModel(config));
-	saveSerialisable<Corpus>(corpus, "corpus.ser");
 
 
 	std::ofstream ofs("tree.txt");

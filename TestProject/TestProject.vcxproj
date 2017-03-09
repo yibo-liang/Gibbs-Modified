@@ -168,6 +168,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\PLDA\json.hpp" />
     <ClInclude Include="plda_all.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resource1.h" />
