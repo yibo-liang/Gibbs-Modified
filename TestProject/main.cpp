@@ -74,6 +74,9 @@ double cosine_similarity(Model & m1, int ma, Model & m2, int mb, vector<int> & r
 	if (result < 0) {
 		cout << result << endl;
 	}
+	if (result > 2) {
+		throw 11;
+	}
 	return result;
 }
 
@@ -84,7 +87,7 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 	json topicClassesDistrib;
 	json metadata;
 	json topicDocDistribution;
-
+	model.update();
 
 	{ //turning single model/submodel to json file
 		metadata["nDocs"] = model.M;
@@ -157,7 +160,7 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 					tweight = 0;
 				}
 				else {
-					tweight = (double)model.nd[m][i] / (double)model.ndsum[m];
+					tweight = (double)model.nd[m][i] / (double)topLevelModel.ndsum[m];
 				}
 				avr_weight += tweight / (double)model.M;
 			}
@@ -179,7 +182,9 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 					weight_value_sum_uk += tweight* val;
 				}
 
-
+				if (tweight > 1.01) {
+					throw 11;
+				}
 				if (tweight < avr_weight) continue;
 				tmp["topicWeight"] = tweight;
 				tmp["docId"] = corpus.documents.at(m).info["id"];
@@ -213,7 +218,7 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 			topicClassesDistrib[to_string(k)][0]["weightSumNorm"] = weight_sum_eu_vec[k] / weight_sum_all;
 			topicClassesDistrib[to_string(k)][1]["weightSumNorm"] = weight_sum_uk_vec[k] / weight_sum_all;
 
-			cout << value_sum_eu_vec[k] << "/ " << value_sum_all << "=" << value_sum_eu_vec[k] / value_sum_all << endl;
+			//cout << value_sum_eu_vec[k] << "/ " << value_sum_all << "=" << value_sum_eu_vec[k] / value_sum_all << endl;
 
 			topicClassesDistrib[to_string(k)][0]["weightedValueSumNorm"] = value_sum_eu_vec[k] / value_sum_all;
 			topicClassesDistrib[to_string(k)][1]["weightedValueSumNorm"] = value_sum_uk_vec[k] / value_sum_all;
@@ -242,12 +247,12 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 
 int main()
 {
-	string path = "C:/Users/Devid/OneDrive/experiment6/";
+	string path = "F:/OneDrives/OneDrive - Heriot-Watt University/experiment8/";
 	Corpus corpus = loadSerialisable<Corpus>(path + "corpus.ser");
-	Model model = loadSerialisable<Model>(path + "Model-10-7-7.model");
+	Model model = loadSerialisable<Model>(path + "Model-7-7-7.model");
 	model.update();
 	json modelJSON = modelToJson(model, corpus, model);
-	ofstream ofs(path + "Model-10-7-7.json");
+	ofstream ofs(path + "Model-7-7-7.json");
 	ofs << modelJSON.dump();
 	ofs.close();
 
