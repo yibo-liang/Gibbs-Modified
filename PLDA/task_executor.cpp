@@ -100,9 +100,9 @@ inline void importNW(Model * model, vecFast2D<int> nw, int partialV, int offset)
 	}
 }
 
-inline void import_Z(Model * model, vector<int> &z, vector<int> &wordSampling, int offsetV) {
+inline void import_Z(Model * model, vector<int> &z, vector<int> &wordSampling, int offsetV, int offsetM) {
 	for (int i = 0; i < z.size(); i++) {
-		int doc_id = wordSampling[i * 2];
+		int doc_id = wordSampling[i * 2] + offsetM;
 		int w = wordSampling[i * 2 + 1] + offsetV;
 		int topic = z[i];
 		model->z[doc_id].push_back(topic);
@@ -169,7 +169,8 @@ void TaskExecutor::executePartition()
 				}
 			}
 			else {
-				sampler.syncFinish();
+				if (config.parallelType == P_GPU)
+					sampler.syncFinish();
 			}
 		}
 
@@ -177,7 +178,7 @@ void TaskExecutor::executePartition()
 			cout << "\rIteration " << iter_n << ", elapsed " << timer.elapsed() << std::flush;
 
 	}
-	
+
 	if (config.parallelType == P_GPU) {
 		for (auto & sampler : samplers) {
 			sampler.syncFinish();
@@ -200,7 +201,7 @@ void TaskExecutor::execMaster()
 		model->w.at(m).clear();
 		model->z.at(m).clear();
 	}
-
+	int temp_sum = 0;
 	for (int i = 0; i < config.totalProcessCount; i++) {
 		if (i != ROOT) {
 			for (int j = 0; j < config.taskPerProcess; j++) {
@@ -213,7 +214,9 @@ void TaskExecutor::execMaster()
 				int offsetV = info[3];
 				int partialV = info[4];
 
-
+				cout << "---- import partial info: i=" << i << ", j=" << j << endl;
+				cout << "offset m = " << offsetM << ", offset v = " << offsetV << endl;
+				cout << "partial M = " << partialM << ", partial V = " << partialV << endl;
 				vecFast2D<int> recevied_nd = newVec2D<int>(partialM, model->K);
 
 				vecFast2D<int> recevied_nw = newVec2D<int>(partialV, model->K);
@@ -230,12 +233,13 @@ void TaskExecutor::execMaster()
 				int word_count;
 				MPI_Recv(&word_count, 1, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
 
+				temp_sum += word_count;
 				vector<int> received_z(word_count);
-				vector<int> received_ws(word_count * 3);
+				vector<int> received_ws(word_count * 2);
 				MPI_Recv(&received_z[0], word_count, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
-				MPI_Recv(&received_ws[0], word_count * 3, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
+				MPI_Recv(&received_ws[0], word_count * 2, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
 
-				import_Z(model, received_z, received_ws, offsetV);
+				import_Z(model, received_z, received_ws, offsetV, offsetM);
 
 				delete[](recevied_nd);
 
@@ -246,11 +250,13 @@ void TaskExecutor::execMaster()
 	}
 	//root self
 	for (auto& sampler : samplers) {
+		temp_sum += sampler.wordInsNum;
 		importND(model, &sampler.nd[0], sampler.partialM, sampler.offsetM);
 		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV);
-		import_Z(model, sampler.z, sampler.wordSampling, sampler.offsetV);
+		import_Z(model, sampler.z, sampler.wordSampling, sampler.offsetV, sampler.offsetM);
 
 	}
+	cout << temp_sum << endl;
 	model->update();
 }
 

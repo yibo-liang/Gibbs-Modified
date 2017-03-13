@@ -1,15 +1,22 @@
 
+#include <boost/asio.hpp>
+#include <string>
+#include <memory>
 #include "plda_all.h"
 #include "json.hpp"
+#include "session.h"
 
 using namespace ParallelHLDA;
+using namespace boost;
+using namespace boost::system;
+using namespace boost::asio;
 
 using json = nlohmann::json;
-using namespace std;
 
 const int nTopics = 25;
-vector<vector<pair<string, int>>> get_topic_words(Model & m, Corpus & corpus) {
+vector<vector<std::pair<string, int>>> get_topic_words(Model & m, Corpus & corpus) {
 
+	using namespace std;
 	struct word_prob_order
 	{
 		inline bool operator() (const pair<int, double>& a, const pair<int, double>& b)
@@ -63,7 +70,7 @@ double cosine_similarity(Model & m1, int ma, Model & m2, int mb, vector<int> & r
 		double db = ((double)m2.nd[i][mb] + m2.alpha) / ((double)root_ndsum[i] + m2.alpha);
 
 		if (m1.nd[i][ma] < 0) {
-			throw new exception();
+			throw new std::exception();
 		}
 
 		sum_ab += da*db;
@@ -89,6 +96,7 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 	json topicDocDistribution;
 	model.update();
 
+	using namespace std;
 	{ //turning single model/submodel to json file
 		metadata["nDocs"] = model.M;
 		metadata["nTopics"] = model.K;
@@ -153,18 +161,8 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 			double weight_value_sum_uk = 0;
 			double weight_value_sum_eu = 0;
 
-			double avr_weight = 0;
-			for (int m = 0; m < model.M; m++) {
-				double tweight;
-				if (model.nd[m][i] == 0) {
-					tweight = 0;
-				}
-				else {
-					tweight = (double)model.nd[m][i] / (double)topLevelModel.ndsum[m];
-				}
-				avr_weight += tweight / (double)model.M;
-			}
 
+			vector<json> unsorted;
 			for (int m = 0; m < model.M; m++) {
 				string topic_id = to_string(m);
 				double tweight = (double)model.nd[m][i] / (double)topLevelModel.ndsum[m]; //mod->theta[m][i];
@@ -185,11 +183,14 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 				if (tweight > 1.01) {
 					throw 11;
 				}
-				if (tweight < avr_weight) continue;
 				tmp["topicWeight"] = tweight;
 				tmp["docId"] = corpus.documents.at(m).info["id"];
 				tmp["docClass"] = corpus.documents.at(m).info["class"];
-				topic_doc_dist.push_back(tmp);
+				unsorted.push_back(tmp);
+			}
+			std::sort(unsorted.begin(), unsorted.end(), [](auto && a, auto && b) {return a["topicWeight"] > b["topicWeight"]; });
+			for (int doc_i = 0; doc_i < 100; doc_i++) {
+				topic_doc_dist.push_back(unsorted[i]);
 			}
 
 			class_eu["weightSum"] = weight_sum_eu;
@@ -228,6 +229,12 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 		metadata["weightSumAll"] = weight_sum_all;
 		metadata["valueSumAll"] = value_sum_all;
 
+		model.nd = vec2d<int>();
+		model.nw = vec2d<int>();
+		model.nwsum = vector<int>();
+		model.theta = vec2d<double>();
+		model.phi = vec2d<double>();
+
 	}
 
 	json submodels;
@@ -245,16 +252,58 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 }
 
 
-int main()
+void accept_and_run(ip::tcp::acceptor& acceptor, io_service& io_service, Model & model)
 {
-	string path = "F:/OneDrives/OneDrive - Heriot-Watt University/experiment8/";
-	Corpus corpus = loadSerialisable<Corpus>(path + "corpus.ser");
-	Model model = loadSerialisable<Model>(path + "Model-7-7-7.model");
-	model.update();
-	json modelJSON = modelToJson(model, corpus, model);
-	ofstream ofs(path + "Model-7-7-7.json");
-	ofs << modelJSON.dump();
-	ofs.close();
+	std::shared_ptr<session> sesh = std::make_shared<session>(io_service, model);
+	
+	acceptor.async_accept(sesh->socket, [sesh, &acceptor, &io_service, &model](const error_code& accept_error)
+	{
+		accept_and_run(acceptor, io_service, model);
+		if (!accept_error)
+		{
+			session::interact(sesh);
+		}
+	});
+}
+
+int main(int argc, char *argv[])
+{
+
+	using namespace std;
+
+	string modelName;
+	if (argc > 1) {
+		string type = string(argv[1]);
+		if (type == "json") {
+			modelName = string(argv[2]);
+			string path = "";
+			Corpus corpus = loadSerialisable<Corpus>(path + "corpus.ser");
+			Model model = loadSerialisable<Model>(path + modelName + ".model");
+			model.update();
+			json modelJSON = modelToJson(model, corpus, model);
+			ofstream ofs(path + modelName + ".json");
+			ofs << modelJSON.dump();
+			ofs.close();
+		}
+		else if (type == "server") {
+			modelName = string(argv[2]);
+			string path = "";
+			Corpus corpus = loadSerialisable<Corpus>(path + "corpus.ser");
+			Model model = loadSerialisable<Model>(path + modelName + ".model");
+			model.update();
+
+			// Serve
+			io_service io_service;
+			ip::tcp::endpoint endpoint{ ip::tcp::v4(), 8081 };
+			ip::tcp::acceptor acceptor{ io_service, endpoint };
+
+			acceptor.listen();
+			accept_and_run(acceptor, io_service, model);
+
+			io_service.run();
+			return 0;
+		}
+	}
 
 
 	return 0;

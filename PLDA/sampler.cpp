@@ -72,7 +72,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 	double sum = 0;
 	nd_partition_offsets.push_back(0);
 	for (int m = 0; m < partialM; m++) {
-		
+
 		sum += 1;
 		if (sum > col_average) {
 			sum = 0;
@@ -96,7 +96,7 @@ void Sampler::prepare_GPU(TaskPartition & task)
 		for (int v = nw_partition_offsets.size(); v < partition_root_num; v++) {
 			nw_partition_offsets.push_back(nw_partition_offsets[nw_partition_offsets.size() - 1]);
 		}
-	}	
+	}
 	if (nd_partition_offsets.size() < partition_root_num) {
 		//fill up to partition with empty partition offset, if there is not enough 
 		for (int v = nd_partition_offsets.size(); v < partition_root_num; v++) {
@@ -264,8 +264,9 @@ void Sampler::sample_MPI()
 		int m = readvec2D(&wordSampling[0], wi, 0, 2);
 		int w = readvec2D(&wordSampling[0], wi, 1, 2);
 
-		int topic = z[wi];
 
+		int topic = z.at(wi);
+		if (readvec2D<int>(&nd[0], m, topic, K) == ndsum.at(m)) continue; //optimization, if all words in the doc are in same topic
 
 
 		//local partial model
@@ -278,9 +279,9 @@ void Sampler::sample_MPI()
 
 		for (int k = 0; k < K; k++) {
 			double A = readvec2D<int>(&nw[0], w, k, K);
-			double B = nwsum[k];
+			double B = nwsum.at(k);
 			double C = readvec2D<int>(&nd[0], m, k, K);
-			double D = ndsum[m];
+			double D = ndsum.at(m);
 			p[k] = (A + beta) / (B + Vbeta) *
 				(C + alpha) / (D + Kalpha);
 		}
@@ -289,7 +290,7 @@ void Sampler::sample_MPI()
 		}
 		double u = ((double)rand() / (double)RAND_MAX) * p[K - 1];
 		for (topic = 0; topic < K; topic++) {
-			if (p[topic] >= u) {
+			if (p.at(topic) >= u) {
 				break;
 			}
 		}

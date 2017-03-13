@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\http-server">
+      <UniqueIdentifier>{ee87b432-faf7-4a50-9712-c69cf116180a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -53,14 +56,17 @@
     <ClInclude Include="plda_all.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resource1.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\PLDA\json.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="session.h">
+      <Filter>Header Files\http-server</Filter>
+    </ClInclude>
+    <ClInclude Include="http_header.h">
+      <Filter>Header Files\http-server</Filter>
+    </ClInclude>
+    <ClInclude Include="request_handler.h">
+      <Filter>Header Files\http-server</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
