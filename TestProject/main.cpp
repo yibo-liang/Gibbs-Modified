@@ -64,11 +64,12 @@ double cosine_similarity(Model & m1, int ma, Model & m2, int mb, vector<int> & r
 	double sum_ab = 0;
 	double sum_a2 = 0;
 	double sum_b2 = 0;
+	double Kalpha = (double)m1.K * m1.alpha;
 	for (int i = 0; i < M; i++) {
 
 		//recalculate theta value based on root ndsum.
-		double da = ((double)m1.nd[i][ma] + m1.alpha) / ((double)root_ndsum[i] + m1.alpha);
-		double db = ((double)m2.nd[i][mb] + m2.alpha) / ((double)root_ndsum[i] + m2.alpha);
+		double da = ((double)m1.nd[i][ma] + m1.alpha) / ((double)root_ndsum[i] + Kalpha);
+		double db = ((double)m2.nd[i][mb] + m2.alpha) / ((double)root_ndsum[i] + Kalpha);
 
 		if (m1.nd[i][ma] < 0) {
 			throw new std::exception();
