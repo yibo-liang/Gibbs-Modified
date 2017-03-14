@@ -201,7 +201,6 @@ void TaskExecutor::execMaster()
 		model->w.at(m).clear();
 		model->z.at(m).clear();
 	}
-	int temp_sum = 0;
 	for (int i = 0; i < config.totalProcessCount; i++) {
 		if (i != ROOT) {
 			for (int j = 0; j < config.taskPerProcess; j++) {
@@ -233,7 +232,6 @@ void TaskExecutor::execMaster()
 				int word_count;
 				MPI_Recv(&word_count, 1, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
 
-				temp_sum += word_count;
 				vector<int> received_z(word_count);
 				vector<int> received_ws(word_count * 2);
 				MPI_Recv(&received_z[0], word_count, MPI_INT, i, datatag, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //word count from the partition
@@ -250,13 +248,11 @@ void TaskExecutor::execMaster()
 	}
 	//root self
 	for (auto& sampler : samplers) {
-		temp_sum += sampler.wordInsNum;
 		importND(model, &sampler.nd[0], sampler.partialM, sampler.offsetM);
 		importNW(model, &sampler.nw[0], sampler.partialV, sampler.offsetV);
 		import_Z(model, sampler.z, sampler.wordSampling, sampler.offsetV, sampler.offsetM);
 
 	}
-	cout << temp_sum << endl;
 	model->update();
 }
 

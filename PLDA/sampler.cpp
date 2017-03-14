@@ -266,7 +266,7 @@ void Sampler::sample_MPI()
 
 
 		int topic = z.at(wi);
-		if (readvec2D<int>(&nd[0], m, topic, K) == ndsum.at(m)) continue; //optimization, if all words in the doc are in same topic
+		//if (readvec2D<int>(&nd[0], m, topic, K) == ndsum.at(m)) continue; //optimization, if all words in the doc are in same topic
 
 
 		//local partial model

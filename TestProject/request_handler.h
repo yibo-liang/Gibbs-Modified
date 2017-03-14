@@ -25,12 +25,29 @@ public:
 	string respond(string url);
 
 private:
-	void recursiveLookupWords(vector<int> words, json & result, Model & model) {
+	void recursiveLookupWords(vector<int> words, json & result, const Model & model) {
 
+		vector<int> topic_word_count(model.K, 0);
+		for (int & w : words) {
+			for (int k = 0; k < model.K; k++) {
+				topic_word_count[k] += model.nw[w][k];
+			}
+		}
+		for (int k = 0; k < model.K; k++) {
+			result["topic_word_sum"][std::to_string(k)] = topic_word_count[k];
+		}
+		json submodel_data;
+		if (model.submodels.size()>0)
+			for (int k = 0; k < model.K; k++) {
+				recursiveLookupWords(words, submodel_data[std::to_string(k)], model.submodels[k]);
+			}
+		result["submodels"] = submodel_data;
 	}
 
 	string handleQueryWords(vector<int> words) {
-
+		json result;
+		recursiveLookupWords(words, result, *(*model));
+		return result.dump();
 	}
 
 	string handleSearchWord(string word) {
@@ -40,7 +57,7 @@ private:
 			result = { "result", "null" };
 		}
 		else {
-
+			result["result"];
 			map<string, int> & wordIndex = (*corpus)->wordToIndex;
 			for (auto it = wordIndex.begin(); it != wordIndex.end(); it++) {
 				if (it->first.find(word) != std::string::npos) {
@@ -58,6 +75,7 @@ private:
 		ssOut << "HTTP/1.1 200 OK" << std::endl;
 		ssOut << "content-type: text/html" << std::endl;
 		ssOut << "content-length: " << content.length() << std::endl;
+		ssOut << "Access-Control-Allow-Origin: *" << endl;
 		ssOut << std::endl;
 		ssOut << content;
 		return ssOut.str();
@@ -82,15 +100,25 @@ string RequestHandler::respond(string url) {
 	boost::split(segments, url, boost::is_any_of("/"));
 
 	string result;
-
-	if (segments.at(1) == "search") {
-		if (segments.size() == 3) {
+	if (segments.size() > 2)
+		if (segments.at(1) == "search") {
 			string word = segments.at(2);
 			return attachDefaultHeader(handleSearchWord(word));
-		}
-	}
 
-	return attachDefaultHeader("");
+		}
+		else if (segments.at(1) == "topic_word_count") {
+			vector<string> queryWords;
+			boost::split(queryWords, segments.at(2), boost::is_any_of("+"));
+			vector<int> wordIdx;
+			for (string & w : queryWords) {
+				if ((*corpus)->wordToIndex.find(w) != (*corpus)->wordToIndex.end()) {
+					wordIdx.push_back((*corpus)->wordToIndex[w]);
+				}
+			}
+			return attachDefaultHeader(handleQueryWords(wordIdx));
+		}
+
+		return attachDefaultHeader("");
 }
 
 int RequestHandler::count = 0;

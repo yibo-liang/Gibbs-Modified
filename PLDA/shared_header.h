@@ -69,6 +69,20 @@ namespace ParallelHLDA {
 		return obj;
 	}
 
+	template<typename N>
+	void loadSerialisable2(N& obj, string filename) {
+		using namespace boost;
+
+		std::ifstream ifs(filename, std::ifstream::binary | std::ifstream::in);
+		archive::binary_iarchive ta(ifs);
+
+		ta >> obj;
+		ifs.close();
+
+		return;
+	}
+
+
 	template<typename A, typename B>
 	using hashmap = unordered_map<A, B>;
 

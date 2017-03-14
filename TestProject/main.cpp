@@ -82,7 +82,7 @@ double cosine_similarity(Model & m1, int ma, Model & m2, int mb, vector<int> & r
 	if (result < 0) {
 		cout << result << endl;
 	}
-	if (result > 2) {
+	if (result > 1.01) {
 		throw 11;
 	}
 	return result;
@@ -191,7 +191,7 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 			}
 			std::sort(unsorted.begin(), unsorted.end(), [](auto && a, auto && b) {return a["topicWeight"] > b["topicWeight"]; });
 			for (int doc_i = 0; doc_i < 100; doc_i++) {
-				topic_doc_dist.push_back(unsorted[i]);
+				topic_doc_dist.push_back(unsorted[doc_i]);
 			}
 
 			class_eu["weightSum"] = weight_sum_eu;
@@ -253,16 +253,16 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 }
 
 
-void accept_and_run(ip::tcp::acceptor& acceptor, io_service& io_service, std::shared_ptr<RequestHandler> requestHandler)
+void accept_and_run(ip::tcp::acceptor& acceptor, io_service& io_service, std::shared_ptr<RequestHandler>& requestHandler)
 {
-	std::shared_ptr<session> sesh = std::make_shared<session>(io_service, requestHandler);
+	std::shared_ptr<session> sesh = std::make_shared<session>(io_service);
 
 	acceptor.async_accept(sesh->socket, [sesh, &acceptor, &io_service, &requestHandler](const error_code& accept_error)
 	{
-		accept_and_run(acceptor, io_service, requestHandler);
+		accept_and_run(acceptor, io_service , requestHandler);
 		if (!accept_error)
 		{
-			session::interact(sesh);
+			session::interact(sesh, requestHandler);
 		}
 	});
 }
@@ -292,26 +292,31 @@ int main(int argc, char *argv[])
 			cout << "Loading data ...";
 			string path = "";
 
-			Corpus corpus = loadSerialisable<Corpus>(path + "corpus.ser");
-			Model model = loadSerialisable<Model>(path + modelName + ".model");
-			std::shared_ptr<Corpus*> p_corpus = std::make_shared<Corpus*>(&corpus);
-			std::shared_ptr<Model*> p_model = std::make_shared<Model*>(&model);
+			//load corpus and model into HEAP
+			Corpus * corpus = new Corpus();
+			Model * model = new Model();
+			loadSerialisable2<Corpus>(*corpus, path + "corpus.ser");
+			loadSerialisable2<Model>(*model, path + modelName + ".model");
 
+			//make shared pointers for loaded data and handler
+			std::shared_ptr<Corpus*> p_corpus = std::make_shared<Corpus*>(corpus);
+			std::shared_ptr<Model*> p_model = std::make_shared<Model*>(model);
 			std::shared_ptr<RequestHandler> requestHandler = std::make_shared<RequestHandler>(p_model, p_corpus);
 
-			//model.update();
 			cout << "\tdone" << endl;
 
-			// Serve
+			// start Server
 			io_service io_service;
 			ip::tcp::endpoint endpoint{ ip::tcp::v4(), 8081 };
 			ip::tcp::acceptor acceptor{ io_service, endpoint };
 
 			acceptor.listen();
 			accept_and_run(acceptor, io_service, requestHandler);
-
 			io_service.run();
 
+			//stop server, which should not happen though.
+			delete corpus;
+			delete model;
 			return 0;
 		}
 	}
