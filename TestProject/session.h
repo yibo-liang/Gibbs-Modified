@@ -2,6 +2,7 @@
 #ifndef HTTP_SESSION
 #define HTTP_SESSION
 #include "http_header.h"
+#include "request_handler.h"
 #include "model.h"
 #include <boost/asio.hpp>
 #include <string>
@@ -16,8 +17,7 @@ class session
 {
 	asio::streambuf buff;
 	http_headers headers;
-	
-	const Model & model;
+	std::shared_ptr<RequestHandler> requestHandler;
 
 	static void read_body(std::shared_ptr<session> pThis)
 	{
@@ -43,7 +43,9 @@ class session
 			{
 				if (pThis->headers.content_length() == 0)
 				{
-					std::shared_ptr<std::string> str = std::make_shared<std::string>(pThis->headers.get_response());
+					string url = pThis->headers.getUrl();
+
+					std::shared_ptr<std::string> str = std::make_shared<std::string>(pThis->requestHandler->respond(url));
 					asio::async_write(pThis->socket, boost::asio::buffer(str->c_str(), str->length()), [pThis, str](const error_code& e, std::size_t s)
 					{
 						std::cout << "done" << std::endl;
@@ -78,11 +80,10 @@ public:
 
 	ip::tcp::socket socket;
 
-	session(io_service& io_service, Model & model)
+	session(io_service& io_service, std::shared_ptr<RequestHandler> requestHandler)
 		:socket(io_service),
-		model(model)
+		requestHandler(requestHandler)
 	{
-		
 	}
 
 	static void interact(std::shared_ptr<session> pThis)

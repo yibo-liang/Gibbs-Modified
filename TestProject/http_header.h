@@ -6,7 +6,6 @@
 #include <string>
 #include <memory>
 #include <iostream>
-#include "request_handler.h"
 using namespace boost;
 using namespace boost::system;
 using namespace boost::asio;
@@ -19,18 +18,15 @@ class http_headers
 
 	std::map<std::string, std::string> headers;
 
-	Model * model;
-	
 
 public:
 
+	std::string getUrl() {
+		return url;
+	}
 
-
-	std::string get_response()
-	{
-		RequestHandler requestHandler(model);
-		return requestHandler.respond(url);
-		
+	const std::map<std::string, std::string> & getHeader() {
+		return headers;
 	}
 
 	int content_length()
@@ -59,10 +55,6 @@ public:
 		headers[headerName] = value;
 	}
 
-	void set_Model(Model * model) {
-		this->model = model;
-	};
-
 	void on_read_request_line(std::string line)
 	{
 		std::stringstream ssRequestLine(line);
@@ -70,7 +62,7 @@ public:
 		ssRequestLine >> url;
 		ssRequestLine >> version;
 
-		std::cout << "request for resource: " << url << std::endl;
+		std::cout << method << "\t\t" << url << "\t\t" << std::flush;
 	}
 };
 

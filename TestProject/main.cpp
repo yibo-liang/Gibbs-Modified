@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include "plda_all.h"
+#include "request_handler.h"
 #include "json.hpp"
 #include "session.h"
 
@@ -252,13 +253,13 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 }
 
 
-void accept_and_run(ip::tcp::acceptor& acceptor, io_service& io_service, Model & model)
+void accept_and_run(ip::tcp::acceptor& acceptor, io_service& io_service, std::shared_ptr<RequestHandler> requestHandler)
 {
-	std::shared_ptr<session> sesh = std::make_shared<session>(io_service, model);
-	
-	acceptor.async_accept(sesh->socket, [sesh, &acceptor, &io_service, &model](const error_code& accept_error)
+	std::shared_ptr<session> sesh = std::make_shared<session>(io_service, requestHandler);
+
+	acceptor.async_accept(sesh->socket, [sesh, &acceptor, &io_service, &requestHandler](const error_code& accept_error)
 	{
-		accept_and_run(acceptor, io_service, model);
+		accept_and_run(acceptor, io_service, requestHandler);
 		if (!accept_error)
 		{
 			session::interact(sesh);
@@ -287,10 +288,19 @@ int main(int argc, char *argv[])
 		}
 		else if (type == "server") {
 			modelName = string(argv[2]);
+			cout << "Http Server for Hexamap data" << endl;
+			cout << "Loading data ...";
 			string path = "";
+
 			Corpus corpus = loadSerialisable<Corpus>(path + "corpus.ser");
 			Model model = loadSerialisable<Model>(path + modelName + ".model");
-			model.update();
+			std::shared_ptr<Corpus*> p_corpus = std::make_shared<Corpus*>(&corpus);
+			std::shared_ptr<Model*> p_model = std::make_shared<Model*>(&model);
+
+			std::shared_ptr<RequestHandler> requestHandler = std::make_shared<RequestHandler>(p_model, p_corpus);
+
+			//model.update();
+			cout << "\tdone" << endl;
 
 			// Serve
 			io_service io_service;
@@ -298,9 +308,10 @@ int main(int argc, char *argv[])
 			ip::tcp::acceptor acceptor{ io_service, endpoint };
 
 			acceptor.listen();
-			accept_and_run(acceptor, io_service, model);
+			accept_and_run(acceptor, io_service, requestHandler);
 
 			io_service.run();
+
 			return 0;
 		}
 	}

@@ -13,8 +13,8 @@ namespace ParallelHLDA {
 
 		vector<Document> inferDocuments;
 		vector<Document> documents;
-		hashmap<string, int> wordToIndex;
-		hashmap<int, string> indexToWord;
+		map<string, int> wordToIndex;
+		map<int, string> indexToWord;
 
 		int totalWordCount = 0;
 		int inferTotalWordCount = 0;
