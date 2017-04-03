@@ -212,10 +212,10 @@ void TaskExecutor::execMaster()
 				int partialM = info[2];
 				int offsetV = info[3];
 				int partialV = info[4];
-
+/*
 				cout << "---- import partial info: i=" << i << ", j=" << j << endl;
 				cout << "offset m = " << offsetM << ", offset v = " << offsetV << endl;
-				cout << "partial M = " << partialM << ", partial V = " << partialV << endl;
+				cout << "partial M = " << partialM << ", partial V = " << partialV << endl;*/
 				vecFast2D<int> recevied_nd = newVec2D<int>(partialM, model->K);
 
 				vecFast2D<int> recevied_nw = newVec2D<int>(partialV, model->K);

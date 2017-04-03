@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{DD1496C9-8439-4B05-ABDA-489E3AF370BD}</ProjectGuid>
+    <ProjectGuid>{CDE5DD38-C9FA-4C96-87D6-AFB3D4F5E596}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>TestProject</RootNamespace>
+    <RootNamespace>ModelEvaluation</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -129,15 +129,11 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <Optimization>Full</Optimization>
+      <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(BOOST_ROOT);$(SolutionDir)\PLDA;$(CUDA_PATH)\include;$(MSMPI_INC);$(MSMPI_INC)\x64</AdditionalIncludeDirectories>
-      <AdditionalUsingDirectories>
-      </AdditionalUsingDirectories>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>$(SolutionDir)PLDA;$(MSMPI_INC);$(MSMPI_INC)\x64;$(BOOST_ROOT);$(CUDA_PATH)\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,11 +141,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(MSMPI_LIB64);$(BOOST_ROOT)/lib64-msvc-14.0;$(CUDA_PATH)/lib/x64</AdditionalLibraryDirectories>
-      <ModuleDefinitionFile>
-      </ModuleDefinitionFile>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;msmpi.lib;OpenCL.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\PLDA\clwrapper.cpp" />
     <ClCompile Include="..\PLDA\corpus.cpp" />
@@ -161,19 +158,29 @@
     <ClCompile Include="..\PLDA\task_executor.cpp" />
     <ClCompile Include="..\PLDA\task_initiator.cpp" />
     <ClCompile Include="..\PLDA\task_partition.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="ModelEvaluation.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\PLDA\clwrapper.h" />
+    <ClInclude Include="..\PLDA\corpus.h" />
+    <ClInclude Include="..\PLDA\document.h" />
+    <ClInclude Include="..\PLDA\job_config.h" />
+    <ClInclude Include="..\PLDA\json.hpp" />
+    <ClInclude Include="..\PLDA\lda_interface.h" />
+    <ClInclude Include="..\PLDA\model.h" />
+    <ClInclude Include="..\PLDA\mpi_helper.h" />
+    <ClInclude Include="..\PLDA\sampler.h" />
+    <ClInclude Include="..\PLDA\shared_header.h" />
+    <ClInclude Include="..\PLDA\task_executor.h" />
+    <ClInclude Include="..\PLDA\task_initiator.h" />
+    <ClInclude Include="..\PLDA\task_partition.h" />
+    <ClInclude Include="..\PLDA\timer.h" />
+    <ClInclude Include="EvalModule.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PLDA\PLDA.vcxproj">
       <Project>{6bf1990a-4359-4596-931a-6361b5c11217}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\PLDA\json.hpp" />
-    <ClInclude Include="http_header.h" />
-    <ClInclude Include="plda_all.h" />
-    <ClInclude Include="request_handler.h" />
-    <ClInclude Include="session.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

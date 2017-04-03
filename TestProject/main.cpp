@@ -60,6 +60,10 @@ vector<vector<std::pair<string, int>>> get_topic_words(Model & m, Corpus & corpu
 
 
 double cosine_similarity(Model & m1, int ma, Model & m2, int mb, vector<int> & root_ndsum) {
+
+	//std::ofstream tmp("cosdist-" + std::to_string(ma) + "-" + std::to_string(mb) + ".txt");
+
+
 	int M = m1.M;
 	double sum_ab = 0;
 	double sum_a2 = 0;
@@ -78,7 +82,12 @@ double cosine_similarity(Model & m1, int ma, Model & m2, int mb, vector<int> & r
 		sum_ab += da*db;
 		sum_a2 += da*da;
 		sum_b2 += db*db;
+		/*tmp << "da=" << da << ",\tdb=" << db <<
+			",\tm1.nd[" << i << "][" << ma << "]=" << m1.nd[i][ma] <<
+			",\tm2.nd[" << i << "][" << mb << "]=" << m2.nd[i][mb] <<
+			",\tndsum="<<root_ndsum[i]<<endl;*/
 	}
+	//tmp.close();
 	double result = sum_ab / (sqrt(sum_a2)*sqrt(sum_b2));
 	if (result < 0) {
 		cout << result << endl;
@@ -260,7 +269,7 @@ void accept_and_run(ip::tcp::acceptor& acceptor, io_service& io_service, std::sh
 
 	acceptor.async_accept(sesh->socket, [sesh, &acceptor, &io_service, &requestHandler](const error_code& accept_error)
 	{
-		accept_and_run(acceptor, io_service , requestHandler);
+		accept_and_run(acceptor, io_service, requestHandler);
 		if (!accept_error)
 		{
 			session::interact(sesh, requestHandler);

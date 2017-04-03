@@ -174,8 +174,8 @@ void Sampler::sample_OPENCL() {
 void Sampler::inference_MPI()
 {
 
-	double Vbeta = (double)V * beta;
-	double Kalpha = (double)K * alpha;
+	float Vbeta = (float)V * beta;
+	float Kalpha = (float)K * alpha;
 
 	for (int wi = 0; wi < wordInsNum; wi++) {
 		int m = readvec2D(&wordSampling[0], wi, 0, 2);
@@ -193,13 +193,13 @@ void Sampler::inference_MPI()
 		//ndsum[m]--;
 
 		for (int k = 0; k < K; k++) {
-			double A = readvec2D<int>(&nw[0], w, k, K);
-			double B = nwsum[k];
-			double C = readvec2D<int>(&nd[0], m, k, K);
-			double D = ndsum[m];
+			int A = readvec2D<int>(&nw[0], w, k, K);
+			int B = nwsum[k];
+			int C = readvec2D<int>(&nd[0], m, k, K);
+			int D = ndsum[m];
 
-			double A2 = inferModel->nw[w][k];
-			double B2 = inferModel->nwsum[k];
+			int A2 = inferModel->nw[w][k];
+			int B2 = inferModel->nwsum[k];
 
 			p[k] = (A + A2 + beta) / (B + B2 + Vbeta) *
 				(C + alpha) / (D + Kalpha);
@@ -207,7 +207,7 @@ void Sampler::inference_MPI()
 		for (int k = 1; k < K; k++) {
 			p[k] += p.at(k - 1);
 		}
-		double u = ((double)rand() / (double)RAND_MAX) * p[K - 1];
+		float u = ((float)fastrand() / (float)4294967295) * p[K - 1];
 		for (topic = 0; topic < K; topic++) {
 			if (p[topic] >= u) {
 				break;
@@ -257,8 +257,8 @@ void Sampler::sample_MPI()
 	/* ------------- initialising sync buffer ------------  */
 	/* ------------- Sample start ------------  */
 
-	double Vbeta = (double)V * beta;
-	double Kalpha = (double)K * alpha;
+	float Vbeta = (float)V * beta;
+	float Kalpha = (float)K * alpha;
 
 	for (int wi = 0; wi < wordInsNum; wi++) {
 		int m = readvec2D(&wordSampling[0], wi, 0, 2);
@@ -278,17 +278,17 @@ void Sampler::sample_MPI()
 		//ndsum[m]--;
 
 		for (int k = 0; k < K; k++) {
-			double A = readvec2D<int>(&nw[0], w, k, K);
-			double B = nwsum.at(k);
-			double C = readvec2D<int>(&nd[0], m, k, K);
-			double D = ndsum.at(m);
+			float A = readvec2D<int>(&nw[0], w, k, K);
+			float B = nwsum.at(k);
+			float C = readvec2D<int>(&nd[0], m, k, K);
+			float D = ndsum.at(m);
 			p[k] = (A + beta) / (B + Vbeta) *
 				(C + alpha) / (D + Kalpha);
 		}
 		for (int k = 1; k < K; k++) {
 			p[k] += p.at(k - 1);
 		}
-		double u = ((double)rand() / (double)RAND_MAX) * p[K - 1];
+		float u = ((float)fastrand() / (float)4294967295U) * p[K - 1];
 		for (topic = 0; topic < K; topic++) {
 			if (p.at(topic) >= u) {
 				break;
@@ -324,7 +324,7 @@ void Sampler::fromTask(TaskPartition& task)
 
 	this->K = task.K;
 	this->V = task.V;
-	this->p = vector<double>(K, 0); // vector used for rollete wheel selection from accumulated distribution
+	this->p = vector<float>(K, 0); // vector used for rollete wheel selection from accumulated distribution
 
 	this->partialM = task.partitionM;
 	this->partialV = task.partitionV;

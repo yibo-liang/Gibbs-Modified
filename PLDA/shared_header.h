@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef SHARED_HEADER_PLDA
+#define SHARED_HEADER_PLDA
+
+
 #include <iostream>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/map.hpp>
@@ -86,11 +90,16 @@ namespace ParallelHLDA {
 	template<typename A, typename B>
 	using hashmap = unordered_map<A, B>;
 
+	unsigned static int g_seed;
+	inline int fastrand() {
+		g_seed = (214013 * g_seed + 2531011);
+		return (g_seed >> 16) & 0x7FFF;
+	}
+
 	inline int RandInteger(int min, int max)
 	{
 		int range = max - min + 1;
 		int num = rand() % range + min;
-
 		return num;
 	}
 	namespace fastVector2D {
@@ -141,3 +150,4 @@ namespace ParallelHLDA {
 
 	}
 }
+#endif // !SHARED_HEADER_PLDA

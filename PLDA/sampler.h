@@ -42,7 +42,7 @@ namespace ParallelHLDA {
 		int offsetM; //starting document offset, since an executor only contains a subset of the model, we need an offset to calculate its mapping to the full model;
 		int offsetV;
 
-		double alpha, beta;
+		float alpha, beta;
 
 		int partialM;  // the document count for this partial model
 		int partialV; // the vocabulary count for this partial model
@@ -79,7 +79,7 @@ namespace ParallelHLDA {
 	private:
 		/* ------- arrays used for Sampling, allocated only once for speed ----*/
 		friend class Sampler;
-		vector<double> p;
+		vector<float> p;
 
 		void sample_MPI();
 
