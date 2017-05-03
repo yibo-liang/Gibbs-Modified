@@ -112,7 +112,7 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 		metadata["nDocs"] = model.M;
 		metadata["nTopics"] = model.K;
 		metadata["nWordsPerTopic"] = nTopics;
-		metadata["docClasses"] = { "EU", "UK" };
+		metadata["docClasses"] = { "EU", "UK", "CN", "US" };
 		metadata["subTopicNumber"] = model.submodels.size();
 
 
@@ -141,6 +141,14 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 		}
 
 
+		map<string, vector<double>> weight_sum_vec;
+		map<string, vector<double>> value_sum_vec;
+
+		for (int i = 0; i < metadata["docClasses"].size(); i++) {
+			string cls = metadata["docClasses"][i];
+			weight_sum_vec[cls] = vector<double>();
+			value_sum_vec[cls] = vector<double>();
+		}
 
 
 		vector<double> weight_sum_eu_vec;

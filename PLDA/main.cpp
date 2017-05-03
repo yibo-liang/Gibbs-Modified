@@ -22,7 +22,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	desc.add_options()
 		("help,?", "produce help message")
 		("file,f", po::value<string>(), "set text filename")
-		("filetype,d", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv/ser(using saved serialized corpus \".ser\" type file)]")
+		("filetype,y", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv/ser(using saved serialized corpus \".ser\" type file)]")
 		("niter", po::value<int>(), "set iteration number")
 		("docn,d", po::value<int>(&n), "set document number")
 		("text-start,t", po::value<int>(), "set starting index to be used for each line of document, if the document is text file only.")

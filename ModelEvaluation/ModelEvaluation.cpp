@@ -11,7 +11,9 @@ int main(int argc, const char * argv[])
 		return 1;
 	}
 	string filename(argv[1]);
-	Model m = loadSerialisable<Model>(filename);
+	cout << filename << endl;
+	Model m;
+	loadSerialisable2<Model>(m,filename);
 	EvalModule em(m);
 	auto result = em.evalAll(10);
 
