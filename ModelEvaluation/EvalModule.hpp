@@ -2,6 +2,7 @@
 #ifndef EVAL_MOD
 #define EVAL_MOD
 #include "model.h"
+#include "corpus.h"
 #include <map>
 
 using namespace ParallelHLDA;
@@ -11,13 +12,21 @@ class EvalModule
 public:
 
 	Model & model;
+	Corpus & corpus;
 
 	map<string, double> eval(int topic_n, int top_word_n) {
 		map<string, double> result;
 		vector<pair<int, int>> top_words = getTopicWords(topic_n, top_word_n);
+		cout << "Topic " << topic_n<< " ";
+		for (auto & ws : top_words) {
+			string word = corpus.indexToWord[ws.first];
+			cout << word << ", ";
+		}
+		cout << endl;
+
+		result["TC-NZ"] = TC_NZ(top_words);
 		result["TC-PMI"] = TC_PMI(top_words);
 		result["TC-LCP"] = TC_LCP(top_words);
-		result["TC-NZ"] = TC_NZ(top_words);
 		return result;
 	}
 
@@ -30,7 +39,8 @@ public:
 		return result;
 	}
 
-	EvalModule(Model & model) : model(model) {
+
+	EvalModule(Model & model, Corpus & corpus) : model(model), corpus(corpus) {
 	};
 	~EvalModule() {};
 
@@ -57,7 +67,7 @@ private:
 	}
 
 	//D(w), the sum number of document with at least one w word occurence
-	double D(int w) {
+	int D(int w) {
 		int sum = 0;
 		for (int m = 0; m < model.M; m++) {
 			for (int i = 0; i < model.w[m].size(); i++) {
@@ -67,11 +77,11 @@ private:
 				}
 			}
 		}
-		return  (double)sum;
+		return sum;
 	}
 
 	//D(w2 , w2), the sum number of document with co-occurence of w1 and w2 
-	double D(int w1, int w2) {
+	int D(int w1, int w2) {
 		int sum = 0;
 		for (int m = 0; m < model.M; m++) {
 			bool has_w1 = false;
@@ -89,7 +99,7 @@ private:
 				}
 			}
 		}
-		return (double)sum;
+		return sum;
 	}
 
 	//number of times w1, w2  appear in a sliding window of each document
@@ -113,19 +123,22 @@ private:
 						has_w2 = true;
 					}
 					if (has_w1 && has_w2) {
-						has_both = true;
-						break;
+						//cout << ", at m=" << m << ", word n=" << i << endl;;
+						return 1;
 					}
 				}
-				if (has_both) {
-					break;
-				}
-			}
-			if (!has_both) {
-				sum += 1;
 			}
 		}
-		return sum;
+		//cout << " none" << endl;
+		return 0;
+	}
+
+	double P(int w) {
+		return (double)(D(w) +1) / (double)model.M;
+	}
+
+	double P(int w1, int w2) {
+		return (double)(D(w1, w2)+1) / (double)model.M;
 	}
 
 	double TC_f(vector<pair<int, int>> & top_words, double (EvalModule::*f)(int, int)) {
@@ -144,15 +157,22 @@ private:
 	}
 
 	double LCP(int w1, int w2) {
-		return log((D(w1, w2) + 1) / (D(w2)));;
+		return log((P(w1, w2)) / (P(w2)));;
 	}
 
 	double PMI(int w1, int w2) {
-		return log((D(w1, w2) + 1) / (D(w1)*D(w2)));
+		return log((P(w1, w2)) / ((P(w1))*(P(w2))));
 	}
 
 	double NZ(int w1, int w2) {
-		return N(w1, w2, 20) == 0 ? 1 : 0;
+		//cout << w1 << "," << w2 << " ";
+		//IN PAPER the window size is 20, however our corpus is smaller, so 10.
+		// CHANGE: USE BINARY CHECK, RATHER THAN WINDOW, SINCE THERE IS NO ACTUAL 
+		int N = D(w1, w2);
+		if (N == 0) {
+			cout << "Cannot Find words: [" << corpus.indexToWord[w1] << "] and [" << corpus.indexToWord[w2] << "]" << endl;
+		}
+		return N == 0 ? 1 : 0; 
 	}
 
 	//metrixs;
