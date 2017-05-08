@@ -141,21 +141,22 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 		}
 
 
-		map<string, vector<double>> weight_sum_vec;
+		map<string, vector<double>> weight_sum_vecs;
 		map<string, vector<double>> value_sum_vec;
 
 		for (int i = 0; i < metadata["docClasses"].size(); i++) {
 			string cls = metadata["docClasses"][i];
-			weight_sum_vec[cls] = vector<double>();
+			weight_sum_vecs[cls] = vector<double>();
 			value_sum_vec[cls] = vector<double>();
 		}
 
 
+/*
 		vector<double> weight_sum_eu_vec;
 		vector<double> weight_sum_uk_vec;
 
 		vector<double> value_sum_eu_vec;
-		vector<double> value_sum_uk_vec;
+		vector<double> value_sum_uk_vec;*/
 
 
 		double weight_sum_all = 0;
@@ -167,37 +168,31 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 			json topic_doc_dist;
 
 
-			//for topic classes (EU/UK)
-			json class_eu;
-			json class_uk;
+			//for topic classes (EU/UK/CN/US)
+			map<string, json> classes;
 
-			class_eu["classID"] = "EU";
-			class_uk["classID"] = "UK";
+			map<string, double> weight_sums;
+			map<string, double> weight_value_sums;
 
-			double weight_sum_uk = 0;
-			double weight_sum_eu = 0;
-
-			double weight_value_sum_uk = 0;
-			double weight_value_sum_eu = 0;
+			for (int ci = 0; ci < metadata["docClasses"].size(); ci++) {
+				string cls = metadata["docClasses"][ci];
+				classes[cls] = json();
+				classes[cls]["classID"] = cls;
+				weight_sums[cls] = 0;
+				weight_value_sums[cls] = 0;
+			}
 
 
 			vector<json> unsorted;
 			for (int m = 0; m < model.M; m++) {
+
 				string topic_id = to_string(m);
 				double tweight = (double)model.nd[m][i] / (double)topLevelModel.ndsum[m]; //mod->theta[m][i];
 				json tmp;
-
-				if (corpus.documents.at(m).info["class"] != "UK") {
-					weight_sum_eu += tweight;
-					double val = atof(corpus.documents.at(m).info["value"].c_str());
-					weight_value_sum_eu += tweight*val;
-
-				}
-				else {
-					weight_sum_uk += tweight;
-					double val = atof(corpus.documents.at(m).info["value"].c_str());
-					weight_value_sum_uk += tweight* val;
-				}
+				string doc_class = corpus.documents.at(m).info["class"].substr(0,2);
+				weight_sums[doc_class] += tweight;
+				double val = atof(corpus.documents.at(m).info["value"].c_str());
+				weight_value_sums[doc_class] += tweight*  val;
 
 				if (tweight > 1.01) {
 					throw 11;
@@ -206,43 +201,110 @@ json modelToJson(Model & model, Corpus & corpus, Model & topLevelModel) {
 				tmp["docId"] = corpus.documents.at(m).info["id"];
 				tmp["docClass"] = corpus.documents.at(m).info["class"];
 				unsorted.push_back(tmp);
+
 			}
 			std::sort(unsorted.begin(), unsorted.end(), [](auto && a, auto && b) {return a["topicWeight"] > b["topicWeight"]; });
 			for (int doc_i = 0; doc_i < 100; doc_i++) {
 				topic_doc_dist.push_back(unsorted[doc_i]);
 			}
 
-			class_eu["weightSum"] = weight_sum_eu;
-			class_eu["weightedValueSum"] = weight_value_sum_eu;
-			class_uk["weightSum"] = weight_sum_uk;
-			class_uk["weightedValueSum"] = weight_value_sum_uk;
+			for (int ci = 0; ci < metadata["docClasses"].size(); ci++) {
+				string cls = metadata["docClasses"][ci];
+				classes[cls]["weightSum"] = weight_sums[cls];
+				classes[cls]["weightedValueSum"] = weight_value_sums[cls];
+				weight_sum_vecs[cls].push_back(weight_sums[cls]);
+				value_sum_vec[cls].push_back(weight_value_sums[cls]);
+				weight_sum_all += weight_sums[cls];
+				value_sum_all += weight_value_sums[cls];
+				topicClassesDistrib[to_string(i)].push_back(classes[cls]);
+			}
 
 
-			weight_sum_eu_vec.push_back(weight_sum_eu);
-			weight_sum_uk_vec.push_back(weight_sum_uk);
+			/*
+						json class_eu;
+						json class_uk;
 
-			value_sum_eu_vec.push_back(weight_value_sum_eu);
-			value_sum_uk_vec.push_back(weight_value_sum_uk);
+						class_eu["classID"] = "EU";
+						class_uk["classID"] = "UK";*/
+
+/*
+			double weight_sum_uk = 0;
+			double weight_sum_eu = 0;
+
+			double weight_value_sum_uk = 0;
+			double weight_value_sum_eu = 0;
+*/
+
+			//for (int m = 0; m < model.M; m++) {
+			//	string topic_id = to_string(m);
+			//	double tweight = (double)model.nd[m][i] / (double)topLevelModel.ndsum[m]; //mod->theta[m][i];
+			//	json tmp;
+
+			//	if (corpus.documents.at(m).info["class"] != "UK") {
+			//		weight_sum_eu += tweight;
+			//		double val = atof(corpus.documents.at(m).info["value"].c_str());
+			//		weight_value_sum_eu += tweight*val;
+
+			//	}
+			//	else {
+			//		weight_sum_uk += tweight;
+			//		double val = atof(corpus.documents.at(m).info["value"].c_str());
+			//		weight_value_sum_uk += tweight* val;
+			//	}
+
+			//	if (tweight > 1.01) {
+			//		throw 11;
+			//	}
+			//	tmp["topicWeight"] = tweight;
+			//	tmp["docId"] = corpus.documents.at(m).info["id"];
+			//	tmp["docClass"] = corpus.documents.at(m).info["class"];
+			//	unsorted.push_back(tmp);
+			//}
+			//std::sort(unsorted.begin(), unsorted.end(), [](auto && a, auto && b) {return a["topicWeight"] > b["topicWeight"]; });
+			//for (int doc_i = 0; doc_i < 100; doc_i++) {
+			//	topic_doc_dist.push_back(unsorted[doc_i]);
+			//}
+
+			//class_eu["weightSum"] = weight_sum_eu;
+			//class_eu["weightedValueSum"] = weight_value_sum_eu;
+			//class_uk["weightSum"] = weight_sum_uk;
+			//class_uk["weightedValueSum"] = weight_value_sum_uk;
 
 
-			weight_sum_all += (weight_sum_eu + weight_sum_uk);
-			value_sum_all += (weight_value_sum_eu + weight_value_sum_uk);
+			//weight_sum_eu_vec.push_back(weight_sum_eu);
+			//weight_sum_uk_vec.push_back(weight_sum_uk);
+
+			//value_sum_eu_vec.push_back(weight_value_sum_eu);
+			//value_sum_uk_vec.push_back(weight_value_sum_uk);
 
 
-			topicClassesDistrib[to_string(i)] = { class_eu, class_uk };
+			//weight_sum_all += (weight_sum_eu + weight_sum_uk);
+			//value_sum_all += (weight_value_sum_eu + weight_value_sum_uk);
+
+
+			//topicClassesDistrib[to_string(i)] = { class_eu, class_uk };
+
 			topicDocDistribution[to_string(i)] = topic_doc_dist;
 		}
 
-		cout << "-----------------------" << endl;
 		for (int k = 0; k < model.K; k++) {
-			topicClassesDistrib[to_string(k)][0]["weightSumNorm"] = weight_sum_eu_vec[k] / weight_sum_all;
-			topicClassesDistrib[to_string(k)][1]["weightSumNorm"] = weight_sum_uk_vec[k] / weight_sum_all;
-
-			//cout << value_sum_eu_vec[k] << "/ " << value_sum_all << "=" << value_sum_eu_vec[k] / value_sum_all << endl;
-
-			topicClassesDistrib[to_string(k)][0]["weightedValueSumNorm"] = value_sum_eu_vec[k] / value_sum_all;
-			topicClassesDistrib[to_string(k)][1]["weightedValueSumNorm"] = value_sum_uk_vec[k] / value_sum_all;
+			for (int ci = 0; ci < metadata["docClasses"].size(); ci++) {
+				string cls = metadata["docClasses"][ci];
+				topicClassesDistrib[to_string(k)][ci]["weightSumNorm"] = weight_sum_vecs[cls][k] / weight_sum_all;
+				topicClassesDistrib[to_string(k)][ci]["weightedValueSumNorm"] = value_sum_vec[cls][k] / value_sum_all;
+			}
 		}
+
+		cout << "-----------------------" << endl;
+		//for (int k = 0; k < model.K; k++) {
+		//	topicClassesDistrib[to_string(k)][0]["weightSumNorm"] = weight_sum_eu_vec[k] / weight_sum_all;
+		//	topicClassesDistrib[to_string(k)][1]["weightSumNorm"] = weight_sum_uk_vec[k] / weight_sum_all;
+
+		//	//cout << value_sum_eu_vec[k] << "/ " << value_sum_all << "=" << value_sum_eu_vec[k] / value_sum_all << endl;
+
+		//	topicClassesDistrib[to_string(k)][0]["weightedValueSumNorm"] = value_sum_eu_vec[k] / value_sum_all;
+		//	topicClassesDistrib[to_string(k)][1]["weightedValueSumNorm"] = value_sum_uk_vec[k] / value_sum_all;
+		//}
 
 
 		metadata["weightSumAll"] = weight_sum_all;
