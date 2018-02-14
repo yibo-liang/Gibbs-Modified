@@ -2,6 +2,7 @@
 
 
 using namespace ParallelHLDA;
+
 void Sampler::sample() {
 	if (sampleMode == P_MPI) {
 		sample_MPI();
@@ -207,7 +208,7 @@ void Sampler::inference_MPI()
 		for (int k = 1; k < K; k++) {
 			p[k] += p.at(k - 1);
 		}
-		float u = ((float)fastrand() / (float)4294967295) * p[K - 1];
+		double u = (double)get_random() * p[K - 1];
 		for (topic = 0; topic < K; topic++) {
 			if (p[topic] >= u) {
 				break;
@@ -288,7 +289,7 @@ void Sampler::sample_MPI()
 		for (int k = 1; k < K; k++) {
 			p[k] += p.at(k - 1);
 		}
-		float u = ((float)fastrand() / (float)4294967295U) * p[K - 1];
+		double u = (double)get_random() * p[K - 1];
 		for (topic = 0; topic < K; topic++) {
 			if (p.at(topic) >= u) {
 				break;
@@ -324,7 +325,7 @@ void Sampler::fromTask(TaskPartition& task)
 
 	this->K = task.K;
 	this->V = task.V;
-	this->p = vector<float>(K, 0); // vector used for rollete wheel selection from accumulated distribution
+	this->p = vector<double>(K, 0); // vector used for rollete wheel selection from accumulated distribution
 
 	this->partialM = task.partitionM;
 	this->partialV = task.partitionV;
@@ -404,6 +405,34 @@ Sampler::Sampler(const Sampler & s)
 
 Sampler::Sampler()
 {
+}
+
+void ParallelHLDA::Sampler::snapshot(int iter)
+{
+	using std::pair;
+	vector<vector<pair<int, int>>> cache(this->partialM);
+	for (int wi = 0; wi < wordInsNum; wi++) {
+		int m = readvec2D(&wordSampling[0], wi, 0, 2);
+		int w = readvec2D(&wordSampling[0], wi, 1, 2);
+
+
+		int topic = z.at(wi);
+		cache[m].push_back(pair<int, int>(w, topic));
+	}
+	string filename = "snapshot-" + std::to_string(iter) + ".txt";
+	std::ofstream file;
+	file.open(filename, std::ios::out | std::ios::app);
+	if (file.fail())
+		throw std::ios_base::failure(std::strerror(errno));
+
+	for (int i = 0; i < cache.size(); i++) {
+		auto & line = cache[i];
+		for (int w = 0; w < line.size(); w++) {
+			file << line[w].first << ":" << line[w].second<< " ";
+		}
+		file << "\n";
+	}
+
 }
 
 Sampler::~Sampler()

@@ -177,6 +177,12 @@ void TaskExecutor::executePartition()
 		if (offset == 0)
 			cout << "\rIteration " << iter_n << ", elapsed " << timer.elapsed() << std::flush;
 
+		if (config.snapshot_interval > 0 && config.totalProcessCount == 1) {
+			if ((iter_n + 1) % config.snapshot_interval == 0) {
+				Sampler& sampler = samplers[0];
+				sampler.snapshot(iter_n);
+			}
+		}
 	}
 
 	if (config.parallelType == P_GPU) {
@@ -212,10 +218,10 @@ void TaskExecutor::execMaster()
 				int partialM = info[2];
 				int offsetV = info[3];
 				int partialV = info[4];
-/*
-				cout << "---- import partial info: i=" << i << ", j=" << j << endl;
-				cout << "offset m = " << offsetM << ", offset v = " << offsetV << endl;
-				cout << "partial M = " << partialM << ", partial V = " << partialV << endl;*/
+				/*
+								cout << "---- import partial info: i=" << i << ", j=" << j << endl;
+								cout << "offset m = " << offsetM << ", offset v = " << offsetV << endl;
+								cout << "partial M = " << partialM << ", partial V = " << partialV << endl;*/
 				vecFast2D<int> recevied_nd = newVec2D<int>(partialM, model->K);
 
 				vecFast2D<int> recevied_nw = newVec2D<int>(partialV, model->K);

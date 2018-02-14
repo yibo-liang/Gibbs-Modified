@@ -26,6 +26,8 @@ namespace ParallelHLDA {
 		void fromJSONFile(string filename, int docn, string textKey, vector<string> otherAttrs);
 		void fronCSVFILE(string filename, int docn, string textKey, vector<string> otherAttrs);//TODO
 
+		void saveToFile(string filename);
+
 		Corpus();
 		~Corpus();
 

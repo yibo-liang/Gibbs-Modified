@@ -22,6 +22,8 @@ namespace ParallelHLDA {
 		double alpha = 0.01;
 		double beta = 0.01;
 
+		int seed = -1;
+		int snapshot_interval = 0;
 		vector<int> hierarchStructure; // [n1,n2,n3,..] => a hierarchical topic model with topic number = n1 as first level, n2 to the second, etc.
 
 		int model_type = NAIVE_HIERARCHICAL_MODEL;

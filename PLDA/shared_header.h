@@ -22,6 +22,7 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/format.hpp>
 #include <stdexcept>
+#include <random>
 
 #include <sys/stat.h>
 #include "timer.h"
@@ -90,18 +91,13 @@ namespace ParallelHLDA {
 	template<typename A, typename B>
 	using hashmap = unordered_map<A, B>;
 
-	unsigned static int g_seed;
-	inline int fastrand() {
-		g_seed = (214013 * g_seed + 2531011);
-		return (g_seed >> 16) & 0x7FFF;
-	}
 
-	inline int RandInteger(int min, int max)
-	{
-		int range = max - min + 1;
-		int num = rand() % range + min;
-		return num;
-	}
+	//static std::default_random_engine e;// initialize Mersennes' twister using rd to generate the seed
+	extern std::mt19937 rng;
+	extern double get_random();
+	extern int RandInteger(int min, int max);
+	extern void randomSeed(int seed);
+
 	namespace fastVector2D {
 
 		//1D array

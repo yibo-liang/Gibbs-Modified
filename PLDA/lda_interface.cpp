@@ -23,7 +23,7 @@ void LdaInterface::recursiveEstimation(Model & model, TaskInitiator & initiator,
 
 	level += 1;
 	if (level < config.hierarchStructure.size()) {
-		model.submodels = model.getInitalSubmodel(config.hierarchStructure[level]);
+		model.submodels = model.getInitalSubmodel(config.hierarchStructure[level], config.seed);
 		for (int i = 0; i < model.K; i++) {
 			recursiveEstimation(model.submodels[i], initiator, executor, config, level);
 		}
@@ -38,7 +38,7 @@ void LdaInterface::recursiveInference(Model & inferModel, Model & newModel, Task
 
 	level += 1;
 	if (inferModel.submodels.size() > 0) {
-		newModel.submodels = newModel.getInitalSubmodel(inferModel.submodels[0].K);
+		newModel.submodels = newModel.getInitalSubmodel(inferModel.submodels[0].K, config.seed);
 		for (int i = 0; i < newModel.K; i++) {
 			recursiveInference(inferModel.submodels[i], newModel.submodels[i], initiator, executor, config, level);
 		}
@@ -57,6 +57,8 @@ string LdaInterface::nameModel(JobConfig &config) {
 }
 
 void LdaInterface::masterHierarchical(JobConfig &config) {
+	randomSeed(config.seed);
+
 	Corpus corpus;
 	Model model;
 	TaskInitiator initiator(config);
@@ -70,6 +72,9 @@ void LdaInterface::masterHierarchical(JobConfig &config) {
 
 
 	std::ofstream ofs("tree.txt");
+
+	corpus.saveToFile("wordmap.txt");
+
 	ofs << model.getTopicWordsTree(25);
 	ofs.close();
 }
@@ -104,6 +109,9 @@ int LdaInterface::master(JobConfig &config) {
 	Timer overall_time;
 	overall_time.reset();
 
+
+
+
 	if (!config.inferencing) {
 		masterHierarchical(config);
 	}
@@ -122,7 +130,7 @@ int LdaInterface::master(JobConfig &config) {
 		cout << "\nPress ENTER to exit.\n";
 	}
 
-	cin.ignore();
+	//cin.ignore();
 	return 0;
 }
 

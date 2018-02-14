@@ -25,6 +25,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("filetype,y", po::value<string>()->default_value("txt"), "set corpus type [txt/json/csv/ser(using saved serialized corpus \".ser\" type file)]")
 		("niter", po::value<int>(), "set iteration number")
 		("docn,d", po::value<int>(&n), "set document number")
+		("seed,s", po::value<int>(&n), "set random seed")
 		("text-start,t", po::value<int>(), "set starting index to be used for each line of document, if the document is text file only.")
 		("alpha", po::value<double>(&alpha), "set alphta number")
 		("beta", po::value<double>(&beta), "set beta number")
@@ -33,6 +34,8 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		("inference,i", po::value<string>(), "inference mode, followed by the file name of the existing model.")
 		("infer-corpus,c", po::value<string>(), "using existing serialized corpus file. give the file name")
 		("document-attributes,a", po::value<vector<string>>()->multitoken(), "Set the attributes indices of a document. [attr 1] [attr 2] .... [attr n]")
+		("snapshot,o", po::value<int>(&n), "set snapshot interval, 0 or ignore will not give snapshot.")
+
 		;
 
 	po::variables_map vm;
@@ -68,6 +71,13 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 	if (vm.count("beta")) {
 		config->beta = vm["beta"].as<double>();
 	}
+	if (vm.count("seed")) {
+		config->seed = vm["seed"].as<int>();
+	}
+	if (vm.count("snapshot")) {
+		config->snapshot_interval = vm["snapshot"].as<int>();
+	}
+
 	if (vm.count("hierarch")) {
 		config->hierarchStructure = vm["hierarch"].as<vector<int>>();
 	}
@@ -85,7 +95,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 		config->inferencing = true;
 	}
 	if (vm.count("document-attributes")) {
-		int i=0;
+		int i = 0;
 		for (string attr : vm["document-attributes"].as<vector<string>>()) {
 			config->otherAttrsIndx[i] = attr;
 			i++;
@@ -98,6 +108,7 @@ int getProgramOption(int argc, char *argv[], JobConfig * config) {
 
 
 int main(int argc, char *argv[]) {
+
 
 	MPI_Init(&argc, &argv);
 
@@ -118,7 +129,7 @@ int main(int argc, char *argv[]) {
 	if (worldRank == 0) {
 
 
-		cin.ignore();
+		//cin.ignore();
 		interface.master(config);
 	}
 	else {

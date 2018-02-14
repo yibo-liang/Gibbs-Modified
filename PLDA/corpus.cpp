@@ -2,6 +2,21 @@
 
 
 using namespace ParallelHLDA;
+
+void ParallelHLDA::Corpus::saveToFile(string filename)
+{
+	std::ofstream file;
+	//can't enable exception now because of gcc bug that raises ios_base::failure with useless message
+	//file.exceptions(file.exceptions() | std::ios::failbit);
+	file.open(filename, std::ios::out);
+	if (file.fail())
+		throw std::ios_base::failure(std::strerror(errno));
+
+	for (auto it = this->wordToIndex.begin(); it != this->wordToIndex.end(); it++) {
+		file << it->first << " " << it->second << "\n";
+	}
+}
+
 Corpus::Corpus()
 {
 }

@@ -76,7 +76,7 @@ double cosine_similarity(Model & m1, int ma, Model & m2, int mb, vector<int> & r
 		double db = ((double)m2.nd[i][mb] + m2.alpha) / ((double)root_ndsum[i] + Kalpha);
 
 		if (m1.nd[i][ma] < 0) {
-			throw new std::exception();
+			throw std::exception();
 		}
 
 		sum_ab += da*db;
@@ -347,6 +347,30 @@ void accept_and_run(ip::tcp::acceptor& acceptor, io_service& io_service, std::sh
 	});
 }
 
+
+void get_doc_topic_pairs(Model & model, Corpus & corpus) {
+	// Input a trained model, and corpus
+	// output instances of document topic pairs of different percentages
+	
+	json bins;
+	//prepare bins
+	for (int i = 0.1; i < 1; i += 0.1) {
+		json bin;
+		bin["range_start"] = i;
+		bin["range_end"] = i + 0.1;
+
+		json instances;
+		bin["ins"] = instances;
+		bins.push_back(bin);
+	}
+
+	for (int m = 0; m < model.M; m++) {
+
+	}
+
+
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -398,6 +422,14 @@ int main(int argc, char *argv[])
 			delete corpus;
 			delete model;
 			return 0;
+		}
+		else if (type == "") {
+			modelName = string(argv[2]);
+			string path = "";
+			Corpus corpus = loadSerialisable<Corpus>(path + "corpus.ser");
+			Model model = loadSerialisable<Model>(path + modelName + ".model");
+			model.update();
+
 		}
 	}
 

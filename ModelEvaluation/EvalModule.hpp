@@ -27,15 +27,24 @@ public:
 		result["TC-NZ"] = TC_NZ(top_words);
 		result["TC-PMI"] = TC_PMI(top_words);
 		result["TC-LCP"] = TC_LCP(top_words);
+		
 		return result;
 	}
 
-	vector<map<string, double>> evalAll(int top_word_n) {
-		vector<map<string, double>>  result;
+	vector<pair<map<string, double>, string>> evalAll(int top_word_n) {
+		vector< pair< map<string, double>, string>>  result;
 		for (int k = 0; k < model.K; k++) {
 			auto t = eval(k, top_word_n);
-			result.push_back(t);
+			auto vtw = getTopicWords(k, top_word_n);
+			string tw = "";
+			for (auto & w : vtw) {
+				tw += corpus.indexToWord[w.first]+",";
+			}
+
+			pair< map<string, double>, string> tmp(t, tw);
+			result.push_back(tmp);
 		}
+		
 		return result;
 	}
 

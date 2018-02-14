@@ -47,10 +47,11 @@ string Model::getTopicWordDistributionTree()
 	return ss.str();
 }
 
-vector<Model> Model::getInitalSubmodel(int K_sublevel)
+vector<Model> Model::getInitalSubmodel(int K_sublevel, int seed)
 {
 	//Create submodels after this model has been built
 	vector<Model> models(K);
+
 
 	for (int k = 0; k < K; k++) {
 		models[k].id = k;

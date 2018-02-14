@@ -75,11 +75,15 @@ namespace ParallelHLDA {
 
 
 		void release_GPU();
+
+
+		void snapshot(int iter);
+
 		~Sampler();
 	private:
 		/* ------- arrays used for Sampling, allocated only once for speed ----*/
 		friend class Sampler;
-		vector<float> p;
+		vector<double> p;
 
 		void sample_MPI();
 

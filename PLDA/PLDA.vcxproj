@@ -164,6 +164,7 @@
     <ClCompile Include="document.cpp" />
     <ClCompile Include="lda_interface.cpp" />
     <ClCompile Include="sampler.cpp" />
+    <ClCompile Include="shared_header.cpp" />
     <ClCompile Include="task_initiator.cpp" />
     <ClCompile Include="job_config.cpp" />
     <ClCompile Include="main.cpp" />

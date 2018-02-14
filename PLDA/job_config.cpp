@@ -9,6 +9,8 @@ JobConfig::JobConfig(const JobConfig & c)
 	this->documentNumber = c.documentNumber;
 	this->alpha = c.alpha;
 	this->beta = c.beta;
+	this->seed = c.seed;
+	this->snapshot_interval = c.snapshot_interval;
 	this->hierarchStructure = c.hierarchStructure;
 	this->model_type = c.model_type;
 	this->parallelType = c.parallelType;
